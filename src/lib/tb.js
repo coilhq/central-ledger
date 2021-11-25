@@ -18,70 +18,71 @@
  * Gates Foundation
  - Name Surname <name.surname@gatesfoundation.com>
 
- * Georgi Georgiev <georgi.georgiev@modusbox.com>
- * Valentin Genev <valentin.genev@modusbox.com>
- * Rajiv Mothilal <rajiv.mothilal@modusbox.com>
- * Miguel de Barros <miguel.debarros@modusbox.com>
+ * Jason Bruwer <jason.bruwer@coil.com>
+
  --------------
  ******/
-
 'use strict'
 
-const Db = require('../../lib/db')
-const Tb = require('../../lib/tb')
 const ErrorHandler = require('@mojaloop/central-services-error-handling')
 const Logger = require('@mojaloop/central-services-logger')
+const createClient = require('tigerbeetle-node').createClient
+const Config = require('../lib/config')
 
-exports.getAll = async () => {
+let tbCachedClient
+
+const getTBClient = async () => {
   try {
-    const result = await Db.from('participant').find({}, { order: 'name asc' })
-    return result
+    if (!Config.TIGERBEETLE.enabled) return null;
+
+    if (tbCachedClient == null) {
+      Logger.info('TB-Client-Enabled. Connecting to R-01 '+Config.TIGERBEETLE.replicaPort01)
+
+      tbCachedClient = await createClient({
+        cluster_id: Config.TIGERBEETLE.cluster,
+        replica_addresses:
+          [
+            Config.TIGERBEETLE.replicaPort01,
+            Config.TIGERBEETLE.replicaPort02,
+            Config.TIGERBEETLE.replicaPort03
+          ]
+      })
+    }
+    return tbCachedClient;
   } catch (err) {
     throw ErrorHandler.Factory.reformatFSPIOPError(err)
   }
 }
 
-exports.create = async (participant) => {
+const tbCreateAccount = async (id) => {
   try {
-    const result = await Db.from('participant').insert({
-      name: participant.name,
-      createdBy: 'unknown'
-    })
+    const client = await getTBClient()
+    Logger.info('TB-Client '+client)
+    if (client == null) return {}
 
-    Logger.info('Insert for a new TB '+Tb)
-
-    const errors = await Tb.tbCreateAccount(result)
-
-    Logger.info('Insert for a new participant '+result+' - '+Tb + ' - '+errors)
-    return result
+    //Participant A
+    const account = {
+      id: id, // u128 (137n)
+      user_data: 0n, // u128, opaque third-party identifier to link this account (many-to-one) to an external entity:
+      reserved: Buffer.alloc(48, 0), // [48]u8
+      unit: 1,   // u16, unit of value
+      code: 718, // u16, a chart of accounts code describing the type of account (e.g. clearing, settlement)
+      flags: 0,  // u32
+      debits_reserved: 0n,  // u64
+      debits_accepted: 0n,  // u64
+      credits_reserved: 0n, // u64
+      credits_accepted: 0n, // u64
+      timestamp: 0n, // u64, Reserved: This will be set by the server.
+    }
+    const errors = await client.createAccounts([account])
+    Logger.error('CreateAccErrors '+errors)
+    return errors
   } catch (err) {
     throw ErrorHandler.Factory.reformatFSPIOPError(err)
   }
 }
 
-exports.update = async (participant, isActive) => {
-  try {
-    const result = await Db.from('participant').update({ participantId: participant.participantId }, { isActive })
-    return result
-  } catch (err) {
-    throw ErrorHandler.Factory.reformatFSPIOPError(err)
-  }
+module.exports = {
+  tbCreateAccount
 }
 
-exports.destroyByName = async (name) => {
-  try {
-    const result = await Db.from('participant').destroy({ name: name })
-    return result
-  } catch (err) {
-    throw ErrorHandler.Factory.reformatFSPIOPError(err)
-  }
-}
-
-exports.destroyParticipantEndpointByParticipantId = async (participantId) => {
-  try {
-    const result = Db.from('participantEndpoint').destroy({ participantId: participantId })
-    return result
-  } catch (err) {
-    throw ErrorHandler.Factory.reformatFSPIOPError(err)
-  }
-}
