@@ -28,6 +28,7 @@ const ErrorHandler = require('@mojaloop/central-services-error-handling')
 const Logger = require('@mojaloop/central-services-logger')
 const createClient = require('tigerbeetle-node').createClient
 const Config = require('../lib/config')
+const util = require('util')
 
 let tbCachedClient
 
@@ -36,15 +37,17 @@ const getTBClient = async () => {
     if (!Config.TIGERBEETLE.enabled) return null;
 
     if (tbCachedClient == null) {
-      Logger.info('TB-Client-Enabled. Connecting to R-01 '+Config.TIGERBEETLE.replicaPort01)
+      Logger.info('TB-Client-Enabled. Connecting to R-01 '+Config.TIGERBEETLE.replicaEndpoint01)
+      Logger.info('TB-Client-Enabled. Connecting to R-02 '+Config.TIGERBEETLE.replicaEndpoint02)
+      Logger.info('TB-Client-Enabled. Connecting to R-03 '+Config.TIGERBEETLE.replicaEndpoint03)
 
       tbCachedClient = await createClient({
         cluster_id: Config.TIGERBEETLE.cluster,
         replica_addresses:
           [
-            Config.TIGERBEETLE.replicaPort01,
-            Config.TIGERBEETLE.replicaPort02,
-            Config.TIGERBEETLE.replicaPort03
+            Config.TIGERBEETLE.replicaEndpoint01,
+            Config.TIGERBEETLE.replicaEndpoint02,
+            Config.TIGERBEETLE.replicaEndpoint03
           ]
       })
     }
@@ -60,9 +63,11 @@ const tbCreateAccount = async (id) => {
     Logger.info('TB-Client '+client)
     if (client == null) return {}
 
+    Logger.info('Storing Account '+id)
+
     //Participant A
     const account = {
-      id: id, // u128 (137n)
+      id: BigInt(id), // u128 (137n)
       user_data: 0n, // u128, opaque third-party identifier to link this account (many-to-one) to an external entity:
       reserved: Buffer.alloc(48, 0), // [48]u8
       unit: 1,   // u16, unit of value
@@ -75,14 +80,83 @@ const tbCreateAccount = async (id) => {
       timestamp: 0n, // u64, Reserved: This will be set by the server.
     }
     const errors = await client.createAccounts([account])
-    Logger.error('CreateAccErrors '+errors)
+    if (errors.length > 0) {
+      for (let i = 0; i < errors.length; i++) {
+        Logger.error('CreateAccErrors -> '+errors[i].code)
+      }
+      const fspiopError = ErrorHandler.Factory.createFSPIOPError(ErrorHandler.Enums.FSPIOPErrorCodes.MODIFIED_REQUEST,
+        'TB-Account entry failed for '+id+ ' : '+ util.inspect(errors));
+      throw fspiopError
+    }
+    //Logger.error('CreateAccErrors '+errors)
+    Logger.error('NoErrors: See! '+util.inspect(errors))
     return errors
   } catch (err) {
     throw ErrorHandler.Factory.reformatFSPIOPError(err)
   }
 }
 
+const tbLookupAccount = async (id) => {
+  try {
+    const client = await getTBClient()
+    if (client == null) return {}
+
+    Logger.info('Fetching Account '+id)
+
+    const accounts = await client.lookupAccounts(BigInt(id))
+    Logger.error('AccLookup: '+util.inspect(accounts))
+    if (accounts.length > 0) return accounts[0]
+    return {}
+  } catch (err) {
+    throw ErrorHandler.Factory.reformatFSPIOPError(err)
+  }
+}
+
+const tbCreateTransfer = async (transferRecord) => {
+  try {
+    const client = await getTBClient()
+    if (client == null) return {}
+
+    Logger.info('Creating Transfer '+util.inspect(transferRecord))
+
+    const transfer = {
+      id: 1n, // u128
+      debit_account_id: 1n,  // u128
+      credit_account_id: 2n, // u128
+      user_data: 0n, // u128, opaque third-party identifier to link this transfer (many-to-one) to an external entity
+      reserved: Buffer.alloc(32, 0), // two-phase condition can go in here
+      timeout: 0n, // u64, in nano-seconds.
+      code: 1,  // u32, a chart of accounts code describing the reason for the transfer (e.g. deposit, settlement)
+      flags: 0, // u32
+      amount: BigInt(transferRecord.amount), // u64
+      timestamp: 0n, //u64, Reserved: This will be set by the server.
+    }
+
+    const errors = await client.createTransfers([transfer])
+    Logger.error('Transfer: '+util.inspect(errors))
+
+    return errors
+  } catch (err) {
+    throw ErrorHandler.Factory.reformatFSPIOPError(err)
+  }
+}
+
+const tbDestroy = async () => {
+  try {
+    const client = await getTBClient()
+    if (client == null) return {}
+    Logger.info('Destroying TB client')
+    client.destroy()
+  } catch (err) {
+    throw ErrorHandler.Factory.reformatFSPIOPError(err)
+  }
+}
+
+
 module.exports = {
-  tbCreateAccount
+  tbCreateAccount,
+  tbLookupAccount,
+  tbCreateTransfer,
+  tbDestroy
 }
 

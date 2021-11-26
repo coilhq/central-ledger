@@ -15,18 +15,18 @@ COPY config /opt/central-ledger/config
 COPY migrations /opt/central-ledger/migrations
 COPY seeds /opt/central-ledger/seeds
 COPY test /opt/central-ledger/test
-COPY bin /opt/central-ledger/bin
+COPY tb /opt/central-ledger/tb
 
 # TigerBeetle
 ## Init
 #RUN whoami
 
-#WORKDIR /opt/central-ledger/bin
+#WORKDIR /opt/central-ledger/tb
 #USER root
 #RUN ./tigerbeetle init --cluster=1 --replica=0 --directory=.
 #RUN ./tigerbeetle init --cluster=1 --replica=1 --directory=.
 #RUN ./tigerbeetle init --cluster=1 --replica=2 --directory=.
-RUN ls -ltra /opt/central-ledger/bin
+RUN ls -ltra /opt/central-ledger/tb
 RUN ls -ltra /opt/central-ledger
 
 #RUN chmod 777 *
@@ -52,9 +52,9 @@ COPY --chown=ml-user --from=builder /opt/central-ledger .
 RUN npm prune --production
 
 # Start TB
-#RUN ./tigerbeetle start --cluster=1 --replica=0 --directory=. --addresses=5001,5002,5003 &
-#RUN ./tigerbeetle start --cluster=1 --replica=1 --directory=. --addresses=5001,5002,5003 &
-#RUN ./tigerbeetle start --cluster=1 --replica=2 --directory=. --addresses=5001,5002,5003 &
+#RUN ./tb/tigerbeetle start --cluster=1 --replica=0 --directory=tb --addresses=5001,5002,5003 &> tb-r-1.log &
+#RUN ./tb/tigerbeetle start --cluster=1 --replica=1 --directory=tb --addresses=5001,5002,5003 &> tb-r-2.log &
+#RUN ./tb/tigerbeetle start --cluster=1 --replica=2 --directory=tb --addresses=5001,5002,5003 &> tb-r-3.log &
 
 # Node
 EXPOSE 3001

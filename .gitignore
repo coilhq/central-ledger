@@ -63,3 +63,6 @@ devspace*
 # Add ignores
 *IGNORE*
 *ignore*
+
+# TigerBeetle
+tb/cluster_*.tigerbeetle
