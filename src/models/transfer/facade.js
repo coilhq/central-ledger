@@ -467,24 +467,18 @@ const saveTransferPrepared = async (payload, stateReason = null, hasPassedValida
       return await knex.transaction(async (trx) => {
         try {
           if (Config.TIGERBEETLE.enabled) {
-            //const tbTransResult = await Tb.tbPrepareTransfer(
-            try {
-              await Tb.tbPrepareTransfer(
-                transferRecord,
-                payerTransferParticipantRecord,
-                payeeTransferParticipantRecord,
-                participants,
-                participantCurrencyIds
-              )
-            } catch (err) {
-              Logger.error("TB: We Have Error!!!!")
-              Logger.error(err)
-            }
+            await Tb.tbTransfer(
+              transferRecord,
+              payerTransferParticipantRecord,
+              payeeTransferParticipantRecord,
+              participants,
+              participantCurrencyIds
+            )
           }
 
-          await knex('transfer').transacting(trx).insert(transferRecord)
-          await knex('transferParticipant').transacting(trx).insert(payerTransferParticipantRecord)
-          await knex('transferParticipant').transacting(trx).insert(payeeTransferParticipantRecord)
+          await knex('transfer').transacting(trx).insert(transferRecord)//TODO done in TB
+          await knex('transferParticipant').transacting(trx).insert(payerTransferParticipantRecord)//TODO done in TB
+          await knex('transferParticipant').transacting(trx).insert(payeeTransferParticipantRecord)//TODO done in TB
           payerTransferParticipantRecord.name = payload.payerFsp
           payeeTransferParticipantRecord.name = payload.payeeFsp
           let transferExtensionsRecordList = []
@@ -498,7 +492,7 @@ const saveTransferPrepared = async (payload, stateReason = null, hasPassedValida
             })
             await knex.batchInsert('transferExtension', transferExtensionsRecordList).transacting(trx)
           }
-          await knex('ilpPacket').transacting(trx).insert(ilpPacketRecord)
+          await knex('ilpPacket').transacting(trx).insert(ilpPacketRecord)//TODO @jason need to confirm why not? We have 32 instead of 47
           await knex('transferStateChange').transacting(trx).insert(transferStateChangeRecord)
           await trx.commit()
           histTimerSaveTranferTransactionValidationPassedEnd({ success: true, queryName: 'facade_saveTransferPrepared_transaction' })
@@ -590,6 +584,11 @@ const saveTransferPrepared = async (payload, stateReason = null, hasPassedValida
 
 const getTransferStateByTransferId = async (id) => {
   try {
+
+    if (Config.TIGERBEETLE.enabled) {
+      //TODO lookup transfer in TB.. If found, we are good...
+    }
+
     /** @namespace Db.transferStateChange **/
     return await Db.from('transferStateChange').query(async (builder) => {
       return builder

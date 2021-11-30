@@ -27,17 +27,21 @@
 const ErrorHandler = require('@mojaloop/central-services-error-handling')
 const Logger = require('@mojaloop/central-services-logger')
 const createClient = require('tigerbeetle-node').createClient
+const tbEnumTransferFlags = require('tigerbeetle-node').TransferFlags
 const Config = require('../lib/config')
 const util = require('util')
+const crypto = require("crypto");
 
 let tbCachedClient
+
+const secret = 'This is a secret 🤫'
 
 const getTBClient = async () => {
   try {
     if (!Config.TIGERBEETLE.enabled) return null;
 
     if (tbCachedClient == null) {
-      Logger.info('TB-Client-Enabled. Connecting to R-01 '+Config.TIGERBEETLE.replicaEndpoint01)
+      Logger.info('TB-Client-Enabled. Connecting to R-01 '+ Config.TIGERBEETLE.replicaEndpoint01)
       Logger.info('TB-Client-Enabled. Connecting to R-02 '+Config.TIGERBEETLE.replicaEndpoint02)
       Logger.info('TB-Client-Enabled. Connecting to R-03 '+Config.TIGERBEETLE.replicaEndpoint03)
 
@@ -57,25 +61,24 @@ const getTBClient = async () => {
   }
 }
 
-const tbCreateAccount = async (id) => {//TODO add currency and account type...
+const tbCreateAccount = async (id, accountType = 1, currencyTxt = 'USD') => {
   try {
     const client = await getTBClient()
-    Logger.info('TB-Client '+client)
     if (client == null) return {}
 
-    Logger.info('Storing Account '+id)
-
     const userData = BigInt(id)
-    const currency = 840;//USD
-    const accountType = 718;
-    const tbId = userData//TODO needs to be (user_data+currency+accountType)
+    const currencyU16 = obtainUnitFromCurrency(currencyTxt)
+    const tbId = tbIdFrom(userData, currencyU16, accountType)
+
+    Logger.info('Storing Account-UserData: '+userData)
+    Logger.info('Storing Account-TB      : '+tbId)
 
     //Participant A
     const account = {
       id: tbId, // u128 (137n)
       user_data: userData, // u128, opaque third-party identifier to link this account (many-to-one) to an external entity:
       reserved: Buffer.alloc(48, 0), // [48]u8
-      unit: currency,   // u16, unit of value
+      unit: currencyU16,   // u16, unit of value
       code: accountType, // u16, a chart of accounts code describing the type of account (e.g. clearing, settlement)
       flags: 0,  // u32
       debits_reserved: 0n,  // u64
@@ -116,7 +119,7 @@ const tbLookupAccount = async (id) => {
   }
 }
 
-const tbPrepareTransfer = async (
+const tbTransfer = async (
   transferRecord,
   payerTransferParticipantRecord,
   payeeTransferParticipantRecord,
@@ -133,23 +136,80 @@ const tbPrepareTransfer = async (
     Logger.info('1.4 Participants         '+util.inspect(participants))
     Logger.info('1.5 Participant Currency '+util.inspect(participantCurrencyIds))
 
-    Logger.info('(tbPrepareTransfer) Making use of id '+uuidToBigInt(transferRecord.transferId))
+    const tranId = uuidToBigInt(transferRecord.transferId)
+    const accountTypeNumeric = payerTransferParticipantRecord.ledgerEntryTypeId
+    const payer = obtainTBAccountFrom(payerTransferParticipantRecord, participants, accountTypeNumeric)
+    const payee = obtainTBAccountFrom(payeeTransferParticipantRecord, participants, accountTypeNumeric)
 
-    //const amountCool = BigInt(transfer.amount)
-    //Logger.info('Cool '+amountCool)
-
-    //TODO we need to find all participants by user_data
+    Logger.info('(tbPrepareTransfer) Making use of id '+
+      uuidToBigInt(transferRecord.transferId) +' ['+ payer + ':::'+payee+']')
 
     const transfer = {
-      id: uuidToBigInt(transferRecord.transferId), // u128
-      debit_account_id: locateAccountFrom(payerTransferParticipantRecord, participants),  // u128
-      credit_account_id: locateAccountFrom(payeeTransferParticipantRecord, participants), // u128
-      user_data: 0n, // u128, opaque third-party identifier to link this transfer (many-to-one) to an external entity
+      id: tranId, // u128
+      debit_account_id: payer,  // u128
+      credit_account_id: payee, // u128
+      user_data: tranId, //TODO u128, opaque third-party identifier to link this transfer (many-to-one) to an external entity
       reserved: Buffer.alloc(32, 0), // two-phase condition can go in here
       timeout: 0n, // u64, in nano-seconds.
-      code: 1,  // u32, a chart of accounts code describing the reason for the transfer (e.g. deposit, settlement)
+      code: accountTypeNumeric,  // u32, a chart of accounts code describing the reason for the transfer (e.g. deposit, settlement)
       flags: 0, // u32
-      amount: 100n, // u64
+      amount: BigInt(transferRecord.amount), // u64
+      timestamp: 0n, //u64, Reserved: This will be set by the server.
+    }
+
+    const errors = await client.createTransfers([transfer])
+    Logger.error('Transfer-Created: '+util.inspect(errors))
+    if (errors.length > 0) {
+      for (let i = 0; i < errors.length; i++) {
+        //TODO Logger.error('CreateTransferErrors -> '+errors[i].code)
+      }
+    }
+    return errors
+  } catch (err) {
+    throw ErrorHandler.Factory.reformatFSPIOPError(err)
+  }
+}
+
+const tbPrepareTransfer = async (
+  transferRecord,
+  payerTransferParticipantRecord,
+  payeeTransferParticipantRecord,
+  participants,
+  participantCurrencyIds,
+  timeoutSeconds = 30
+) => {
+  try {
+    const client = await getTBClient()
+    if (client == null) return {}
+
+    Logger.info('1.1 Creating Transfer    '+util.inspect(transferRecord))
+    Logger.info('1.2 Creating Payer       '+util.inspect(payerTransferParticipantRecord))
+    Logger.info('1.3 Creating Payee       '+util.inspect(payeeTransferParticipantRecord))
+    Logger.info('1.4 Participants         '+util.inspect(participants))
+    Logger.info('1.5 Participant Currency '+util.inspect(participantCurrencyIds))
+
+    const tranId = uuidToBigInt(transferRecord.transferId)
+    const accountTypeNumeric = payerTransferParticipantRecord.ledgerEntryTypeId
+    const payer = obtainTBAccountFrom(payerTransferParticipantRecord, participants, accountTypeNumeric)
+    const payee = obtainTBAccountFrom(payeeTransferParticipantRecord, participants, accountTypeNumeric)
+
+    let flags = 0
+    flags |= tbEnumTransferFlags.two_phase_commit
+    const timeoutNanoseconds = BigInt(timeoutSeconds * 1000000000n)
+
+    Logger.info('(tbPrepareTransfer) Making use of id '+
+      uuidToBigInt(transferRecord.transferId) +' ['+ payer + ':::'+payee+']')
+
+    const transfer = {
+      id: tranId, // u128
+      debit_account_id: payer,  // u128
+      credit_account_id: payee, // u128
+      user_data: tranId, //TODO u128, opaque third-party identifier to link this transfer (many-to-one) to an external entity
+      reserved: Buffer.alloc(32, 0), // two-phase condition can go in here
+      timeout: timeoutNanoseconds, // u64, in nano-seconds.
+      code: accountTypeNumeric,  // u32, a chart of accounts code describing the reason for the transfer (e.g. deposit, settlement)
+      flags: flags, // u32
+      amount: BigInt(transferRecord.amount), // u64
       timestamp: 0n, //u64, Reserved: This will be set by the server.
     }
 
@@ -212,22 +272,43 @@ const tbDestroy = async () => {
   }
 }
 
-const locateAccountFrom = (
+const obtainTBAccountFrom = (
   account,
-  participants
+  participants,
+  accountTypeNumeric
 ) => {
   const partCurrencyId = account.participantCurrencyId;
   for (let i = 0; i < participants.length; i++) {
     const itemAtIndex = participants[i]
     if (itemAtIndex.participantCurrencyId == partCurrencyId) {
-      Logger.info('Found Account! LocateAccount: '+util.inspect(itemAtIndex))
-      return BigInt(itemAtIndex.participantId)
+      return tbIdFrom(
+        itemAtIndex.participantId,
+        obtainUnitFromCurrency(itemAtIndex.currencyId),
+        accountTypeNumeric
+      )
     }
   }
 
   const fspiopError = ErrorHandler.Factory.createFSPIOPError(ErrorHandler.Enums.FSPIOPErrorCodes.MODIFIED_REQUEST,
     'TB-Participant-NotFound '+partCurrencyId+ ' : '+ util.inspect(account) + ' : ' + util.inspect(participants));
   throw fspiopError
+}
+
+const obtainUnitFromCurrency = (currencyTxt) => {
+  switch (currencyTxt) {
+    case 'KES' : return 404;
+    case 'ZAR' : return 710;
+    default : return 840;//USD
+  }
+}
+
+const tbIdFrom = (userData, currencyTxt, accountTypeNumeric) => {
+  const combined = ''+userData+'-'+currencyTxt+'-'+accountTypeNumeric
+  Logger.info('-------------__>   '+ combined)
+
+  const md5Hasher = crypto.createHmac('md5', secret)
+  const hash = md5Hasher.update(combined).digest('hex')
+  return BigInt("0x"+hash)
 }
 
 const uuidToBigInt = (uuid) => {
@@ -244,6 +325,7 @@ const uuidToBigInt = (uuid) => {
 module.exports = {
   tbCreateAccount,
   tbLookupAccount,
+  tbTransfer,
   tbPrepareTransfer,
   tbFulfilTransfer,
   tbDestroy
