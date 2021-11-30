@@ -54,7 +54,7 @@ const getByNameAndCurrency = async (name, currencyId, ledgerAccountTypeId, isCur
       /* find paricipant id by name */
       participant = await ParticipantModelCached.getByName(name)
       if (participant) {
-        /* use the paricipant id and incoming params to prepare the filter */
+        /* use the participant id and incoming params to prepare the filter */
         const searchFilter = {
           participantId: participant.participantId,
           currencyId,

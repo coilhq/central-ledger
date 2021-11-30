@@ -48,10 +48,8 @@ exports.create = async (participant) => {
       createdBy: 'unknown'
     })
 
-    Logger.info('Insert for a new TB '+Tb)
-
     const errors = await Tb.tbCreateAccount(result)
-    //Logger.info('Inserted for a new participant '+result+' - '+Tb + ' - '+errors)
+    Logger.info('Inserted for a new participant '+result+' - '+Tb + ' - '+errors)
     return result
   } catch (err) {
     throw ErrorHandler.Factory.reformatFSPIOPError(err)

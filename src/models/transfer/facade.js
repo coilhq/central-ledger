@@ -33,6 +33,7 @@
  */
 
 const Db = require('../../lib/db')
+const Tb = require("../../lib/tb");
 const Enum = require('@mojaloop/central-services-shared').Enum
 const TransferEventAction = Enum.Events.Event.Action
 const TransferInternalState = Enum.Transfers.TransferInternalState
@@ -465,6 +466,22 @@ const saveTransferPrepared = async (payload, stateReason = null, hasPassedValida
       ).startTimer()
       return await knex.transaction(async (trx) => {
         try {
+          if (Config.TIGERBEETLE.enabled) {
+            //const tbTransResult = await Tb.tbPrepareTransfer(
+            try {
+              await Tb.tbPrepareTransfer(
+                transferRecord,
+                payerTransferParticipantRecord,
+                payeeTransferParticipantRecord,
+                participants,
+                participantCurrencyIds
+              )
+            } catch (err) {
+              Logger.error("TB: We Have Error!!!!")
+              Logger.error(err)
+            }
+          }
+
           await knex('transfer').transacting(trx).insert(transferRecord)
           await knex('transferParticipant').transacting(trx).insert(payerTransferParticipantRecord)
           await knex('transferParticipant').transacting(trx).insert(payeeTransferParticipantRecord)

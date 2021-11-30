@@ -25,7 +25,6 @@
 'use strict'
 
 const Db = require('../../lib/db')
-const Tb = require('../../lib/tb')
 const Logger = require('@mojaloop/central-services-logger')
 const ErrorHandler = require('@mojaloop/central-services-error-handling')
 
@@ -40,7 +39,6 @@ const getById = async (transferId) => {
 const saveTransfer = async (record) => {
   Logger.isDebugEnabled && Logger.debug('save transfer' + record.toString())
   try {
-    const tbTransResult = Tb.tbCreateTransfer(record)
     return Db.from('transfer').insert(record)
   } catch (err) {
     Logger.isErrorEnabled && Logger.error(err)
