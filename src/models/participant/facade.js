@@ -29,6 +29,7 @@
  */
 
 const Db = require('../../lib/db')
+const Tb = require('../../lib/tb')
 const Time = require('@mojaloop/central-services-shared').Util.Time
 const ErrorHandler = require('@mojaloop/central-services-error-handling')
 const Metrics = require('@mojaloop/central-services-metrics')
@@ -367,6 +368,11 @@ const getParticipantLimitByParticipantCurrencyLimit = async (participantId, curr
 
 const getParticipantPositionByParticipantIdAndCurrencyId = async (participantId, currencyId, ledgerAccountTypeId) => {
   try {
+    if (Config.TIGERBEETLE.enabled) {
+      //TODO @jason, retrieve position from TB
+    }
+
+
     return await Db.from('participant').query(async (builder) => {
       return builder
         .where({

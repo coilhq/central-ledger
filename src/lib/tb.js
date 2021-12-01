@@ -26,8 +26,8 @@
 
 const ErrorHandler = require('@mojaloop/central-services-error-handling')
 const Logger = require('@mojaloop/central-services-logger')
-const createClient = require('tigerbeetle-node').createClient
-const tbEnumTransferFlags = require('tigerbeetle-node').TransferFlags
+const TbNode = require('tigerbeetle-node')
+const createClient = TbNode.createClient
 const Config = require('../lib/config')
 const util = require('util')
 const crypto = require("crypto");
@@ -70,8 +70,7 @@ const tbCreateAccount = async (id, accountType = 1, currencyTxt = 'USD') => {
     const currencyU16 = obtainUnitFromCurrency(currencyTxt)
     const tbId = tbIdFrom(userData, currencyU16, accountType)
 
-    Logger.info('Storing Account-UserData: '+userData)
-    Logger.info('Storing Account-TB      : '+tbId)
+    Logger.info('Storing Account-UserData: '+userData+":"+tbId)
 
     //Participant A
     const account = {
@@ -93,7 +92,8 @@ const tbCreateAccount = async (id, accountType = 1, currencyTxt = 'USD') => {
         Logger.error('CreateAccErrors -> '+errors[i].code)
       }
       const fspiopError = ErrorHandler.Factory.createFSPIOPError(ErrorHandler.Enums.FSPIOPErrorCodes.MODIFIED_REQUEST,
-        'TB-Account entry failed for '+id+ ' : '+ util.inspect(errors));
+        'TB-Account entry failed for [' + id + ':' +
+        enumLabelFromCode(TbNode.CreateAccountError, errors[0].code) + '] : '+ util.inspect(errors));
       throw fspiopError
     }
     //Logger.error('AccCreate-> NoErrors: See! '+util.inspect(errors))
@@ -194,7 +194,7 @@ const tbPrepareTransfer = async (
     const payee = obtainTBAccountFrom(payeeTransferParticipantRecord, participants, accountTypeNumeric)
 
     let flags = 0
-    flags |= tbEnumTransferFlags.two_phase_commit
+    flags |= TbNode.TransferFlags.two_phase_commit
     const timeoutNanoseconds = BigInt(timeoutSeconds * 1000000000n)
 
     Logger.info('(tbPrepareTransfer) Making use of id '+
@@ -322,12 +322,18 @@ const uuidToBigInt = (uuid) => {
   return BigInt("0x" + uuid.replace(/-/g, ''))
 }
 
+const enumLabelFromCode = (resultEnum, errCode) => {
+  const errorEnum = Object.keys(resultEnum)
+  return errorEnum[errCode + ((errorEnum.length / 2) - 1)]
+}
+
+
 module.exports = {
   tbCreateAccount,
-  tbLookupAccount,
   tbTransfer,
-  tbPrepareTransfer,
+  tbPrepareTransfer, //TODO @jason: Need to add the rollback functions here...
   tbFulfilTransfer,
+  tbLookupAccount,
   tbDestroy
 }
 

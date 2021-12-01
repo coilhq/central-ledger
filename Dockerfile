@@ -28,6 +28,8 @@ COPY tb /opt/central-ledger/tb
 #RUN ./tigerbeetle init --cluster=1 --replica=2 --directory=.
 RUN ls -ltra /opt/central-ledger/tb
 RUN ls -ltra /opt/central-ledger
+RUN cp /opt/central-ledger/test/run_test_integration.sh /opt/central-ledger/run_tests.sh
+RUN chmod 777 /opt/central-ledger/run_tests.sh
 
 #RUN chmod 777 *
 
