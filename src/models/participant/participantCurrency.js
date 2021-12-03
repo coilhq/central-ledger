@@ -25,10 +25,18 @@
 'use strict'
 
 const Db = require('../../lib/db')
+const Tb = require("../../lib/tb")
+const Config = require("../../lib/config")
 const ErrorHandler = require('@mojaloop/central-services-error-handling')
+const Logger = require('@mojaloop/central-services-logger')
 
 exports.create = async (participantId, currencyId, ledgerAccountTypeId, isActive = true) => {
   try {
+    if (Config.TIGERBEETLE.enabled) {
+      await Tb.tbCreateAccount(participantId, ledgerAccountTypeId, currencyId)
+      Logger.info('Inserted for a new participantCurrency '+participantId+' - '+currencyId + ' - '+ledgerAccountTypeId)
+    }
+
     return await Db.from('participantCurrency').insert({
       participantId,
       currencyId,

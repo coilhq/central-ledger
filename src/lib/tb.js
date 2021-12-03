@@ -38,7 +38,7 @@ const secret = 'This is a secret 🤫'
 
 const getTBClient = async () => {
   try {
-    if (!Config.TIGERBEETLE.enabled) return null;
+    if (!Config.TIGERBEETLE.enabled) return null
 
     if (tbCachedClient == null) {
       Logger.info('TB-Client-Enabled. Connecting to R-01 '+ Config.TIGERBEETLE.replicaEndpoint01)
@@ -70,8 +70,6 @@ const tbCreateAccount = async (id, accountType = 1, currencyTxt = 'USD') => {
     const currencyU16 = obtainUnitFromCurrency(currencyTxt)
     const tbId = tbIdFrom(userData, currencyU16, accountType)
 
-    Logger.info('Storing Account-UserData: '+userData+":"+tbId)
-
     //Participant A
     const account = {
       id: tbId, // u128 (137n)
@@ -88,6 +86,8 @@ const tbCreateAccount = async (id, accountType = 1, currencyTxt = 'USD') => {
     }
     const errors = await client.createAccounts([account])
     if (errors.length > 0) {
+      Logger.error('CreateAccount-ERROR: '+enumLabelFromCode(TbNode.CreateAccountError, errors[0].code))
+
       for (let i = 0; i < errors.length; i++) {
         Logger.error('CreateAccErrors -> '+errors[i].code)
       }
@@ -96,21 +96,24 @@ const tbCreateAccount = async (id, accountType = 1, currencyTxt = 'USD') => {
         enumLabelFromCode(TbNode.CreateAccountError, errors[0].code) + '] : '+ util.inspect(errors));
       throw fspiopError
     }
-    //Logger.error('AccCreate-> NoErrors: See! '+util.inspect(errors))
     return errors
   } catch (err) {
     throw ErrorHandler.Factory.reformatFSPIOPError(err)
   }
 }
 
-const tbLookupAccount = async (id) => {
+const tbLookupAccount = async (id, accountType = 1, currencyTxt = 'USD') => {
   try {
     const client = await getTBClient()
     if (client == null) return {}
 
-    Logger.info('Fetching Account '+id)
+    const userData = BigInt(id)
+    const currencyU16 = obtainUnitFromCurrency(currencyTxt)
+    const tbId = tbIdFrom(userData, currencyU16, accountType)
 
-    const accounts = await client.lookupAccounts(BigInt(id))
+    Logger.info('Fetching Account '+tbId)
+
+    const accounts = await client.lookupAccounts(tbId)
     Logger.error('AccLookup: '+util.inspect(accounts))
     if (accounts.length > 0) return accounts[0]
     return {}
@@ -141,7 +144,7 @@ const tbTransfer = async (
     const payer = obtainTBAccountFrom(payerTransferParticipantRecord, participants, accountTypeNumeric)
     const payee = obtainTBAccountFrom(payeeTransferParticipantRecord, participants, accountTypeNumeric)
 
-    Logger.info('(tbPrepareTransfer) Making use of id '+
+    Logger.info('(tbTransfer) Making use of id '+
       uuidToBigInt(transferRecord.transferId) +' ['+ payer + ':::'+payee+']')
 
     const transfer = {
@@ -158,11 +161,12 @@ const tbTransfer = async (
     }
 
     const errors = await client.createTransfers([transfer])
-    Logger.error('Transfer-Created: '+util.inspect(errors))
     if (errors.length > 0) {
-      for (let i = 0; i < errors.length; i++) {
-        //TODO Logger.error('CreateTransferErrors -> '+errors[i].code)
-      }
+      Logger.error('Transfer-ERROR: '+enumLabelFromCode(TbNode.CreateTransferError, errors[0].code))
+      const fspiopError = ErrorHandler.Factory.createFSPIOPError(ErrorHandler.Enums.FSPIOPErrorCodes.MODIFIED_REQUEST,
+        'TB-Transfer entry failed for [' + tranId + ':' +
+        enumLabelFromCode(TbNode.CreateTransferError, errors[0].code) + '] : '+ util.inspect(errors));
+      throw fspiopError
     }
     return errors
   } catch (err) {
@@ -195,16 +199,17 @@ const tbPrepareTransfer = async (
 
     let flags = 0
     flags |= TbNode.TransferFlags.two_phase_commit
-    const timeoutNanoseconds = BigInt(timeoutSeconds * 1000000000n)
+
+    const timeoutNanoseconds = BigInt(timeoutSeconds * 1000000000)
 
     Logger.info('(tbPrepareTransfer) Making use of id '+
-      uuidToBigInt(transferRecord.transferId) +' ['+ payer + ':::'+payee+']')
+      uuidToBigInt(transferRecord.transferId) +' [Payer-'+ payer + ':::Payee-'+payee+']')
 
     const transfer = {
       id: tranId, // u128
       debit_account_id: payer,  // u128
       credit_account_id: payee, // u128
-      user_data: tranId, //TODO u128, opaque third-party identifier to link this transfer (many-to-one) to an external entity
+      user_data: tranId, // u128, opaque third-party identifier to link this transfer (many-to-one) to an external entity
       reserved: Buffer.alloc(32, 0), // two-phase condition can go in here
       timeout: timeoutNanoseconds, // u64, in nano-seconds.
       code: accountTypeNumeric,  // u32, a chart of accounts code describing the reason for the transfer (e.g. deposit, settlement)
@@ -214,11 +219,14 @@ const tbPrepareTransfer = async (
     }
 
     const errors = await client.createTransfers([transfer])
-    Logger.error('Transfer-Created: '+util.inspect(errors))
+    //Logger.error('PrepareTransfer-Created: '+util.inspect(errors))
     if (errors.length > 0) {
-      for (let i = 0; i < errors.length; i++) {
-        //TODO Logger.error('CreateTransferErrors -> '+errors[i].code)
-      }
+      Logger.error('PrepareTransfer-ERROR: '+enumLabelFromCode(TbNode.CreateTransferError, errors[0].code))
+
+      const fspiopError = ErrorHandler.Factory.createFSPIOPError(ErrorHandler.Enums.FSPIOPErrorCodes.MODIFIED_REQUEST,
+        'TB-PrepareTransfer entry failed for [' + tranId + ':' +
+        enumLabelFromCode(TbNode.CreateTransferError, errors[0].code) + '] : '+ util.inspect(errors));
+      throw fspiopError
     }
     return errors
   } catch (err) {
@@ -226,33 +234,30 @@ const tbPrepareTransfer = async (
   }
 }
 
-const tbFulfilTransfer = async (transferRecord) => {
+const tbFulfilTransfer = async (
+  transferFulfilmentRecord,
+  ledgerEntryTypeId = 1,
+) => {
   try {
     const client = await getTBClient()
     if (client == null) return {}
 
-    //Logger.info('Creating Transfer '+util.inspect(transferRecord))
-    //Logger.info('Making use of id '+uuidToBigInt(transferRecord.transferId))
-
-    const transfer = {
-      id: uuidToBigInt(transferRecord.transferId), // u128
-      debit_account_id: 1n,  // u128
-      credit_account_id: 2n, // u128
-      user_data: 0n, // u128, opaque third-party identifier to link this transfer (many-to-one) to an external entity
-      reserved: Buffer.alloc(32, 0), // two-phase condition can go in here
-      timeout: 0n, // u64, in nano-seconds.
-      code: 1,  // u32, a chart of accounts code describing the reason for the transfer (e.g. deposit, settlement)
-      flags: 0, // u32
-      amount: BigInt(transferRecord.amount), // u64
-      timestamp: 0n, //u64, Reserved: This will be set by the server.
+    const commit = {
+      id: uuidToBigInt(transferFulfilmentRecord.transferId), // u128
+      code: ledgerEntryTypeId,
+      flags: 0, // defaults to accept
+      reserved: Buffer.alloc(32, 0),
+      timestamp: 0n, // this will be set correctly by the TigerBeetle server
     }
 
-    const errors = await client.createTransfers([transfer])
-    Logger.error('Transfer-Created: '+util.inspect(errors))
+    const errors = await client.commitTransfers([commit])
     if (errors.length > 0) {
-      for (let i = 0; i < errors.length; i++) {
-        //TODO Logger.error('CreateTransferErrors -> '+errors[i].code)
-      }
+      Logger.error('FulfilTransfer-ERROR: '+enumLabelFromCode(TbNode.CommitTransferError, errors[0].code))
+
+      const fspiopError = ErrorHandler.Factory.createFSPIOPError(ErrorHandler.Enums.FSPIOPErrorCodes.MODIFIED_REQUEST,
+        'TB-TransferFulfil entry failed for [' + tranId + ':' +
+        enumLabelFromCode(TbNode.CreateTransferError, errors[0].code) + '] : '+ util.inspect(errors));
+      throw fspiopError
     }
     return errors
   } catch (err) {

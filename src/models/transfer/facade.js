@@ -33,7 +33,7 @@
  */
 
 const Db = require('../../lib/db')
-const Tb = require("../../lib/tb");
+const Tb = require("../../lib/tb")
 const Enum = require('@mojaloop/central-services-shared').Enum
 const TransferEventAction = Enum.Events.Event.Action
 const TransferInternalState = Enum.Transfers.TransferInternalState
@@ -355,6 +355,10 @@ const savePayeeTransferResponse = async (transferId, payload, action, fspiopErro
           Logger.isDebugEnabled && Logger.debug('savePayeeTransferResponse::settlementWindowId')
         }
         if (isFulfilment) {
+          if (Config.TIGERBEETLE.enabled) {
+            await Tb.tbFulfilTransfer(transferFulfilmentRecord)
+          }
+
           await knex('transferFulfilment').transacting(trx).insert(transferFulfilmentRecord)
           result.transferFulfilmentRecord = transferFulfilmentRecord
           Logger.isDebugEnabled && Logger.debug('savePayeeTransferResponse::transferFulfilment')
@@ -467,7 +471,7 @@ const saveTransferPrepared = async (payload, stateReason = null, hasPassedValida
       return await knex.transaction(async (trx) => {
         try {
           if (Config.TIGERBEETLE.enabled) {
-            await Tb.tbTransfer(
+            await Tb.tbPrepareTransfer(
               transferRecord,
               payerTransferParticipantRecord,
               payeeTransferParticipantRecord,
@@ -587,6 +591,7 @@ const getTransferStateByTransferId = async (id) => {
 
     if (Config.TIGERBEETLE.enabled) {
       //TODO lookup transfer in TB.. If found, we are good...
+      //TODO Need to update the node-js client to support fetching a transfer
     }
 
     /** @namespace Db.transferStateChange **/
@@ -893,6 +898,8 @@ const reconciliationTransferPrepare = async function (payload, transactionTimest
           throw ErrorHandler.Factory.createFSPIOPError(ErrorHandler.Enums.FSPIOPErrorCodes.INTERNAL_SERVER_ERROR, 'Action not allowed for reconciliationTransferPrepare')
         }
 
+        //TODO @jason, store in TB -> [HUB] + DFSP_SETTLEMENT
+
         // Insert transferParticipant records
         await knex('transferParticipant')
           .insert({
@@ -1140,6 +1147,8 @@ const reconciliationTransferAbort = async function (payload, transactionTimestam
 
 const getTransferParticipant = async (participantName, transferId) => {
   try {
+    //TODO @jason, make use of TB here...
+
     return Db.from('participant').query(async (builder) => {
       return builder
         .where({
