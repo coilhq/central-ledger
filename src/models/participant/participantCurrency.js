@@ -34,7 +34,6 @@ exports.create = async (participantId, currencyId, ledgerAccountTypeId, isActive
   try {
     if (Config.TIGERBEETLE.enabled) {
       await Tb.tbCreateAccount(participantId, ledgerAccountTypeId, currencyId)
-      Logger.info('Inserted for a new participantCurrency '+participantId+' - '+currencyId + ' - '+ledgerAccountTypeId)
     }
 
     return await Db.from('participantCurrency').insert({

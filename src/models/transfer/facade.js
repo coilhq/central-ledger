@@ -34,6 +34,8 @@
 
 const Db = require('../../lib/db')
 const Tb = require("../../lib/tb")
+const util = require('util')
+
 const Enum = require('@mojaloop/central-services-shared').Enum
 const TransferEventAction = Enum.Events.Event.Action
 const TransferInternalState = Enum.Transfers.TransferInternalState
@@ -898,7 +900,14 @@ const reconciliationTransferPrepare = async function (payload, transactionTimest
           throw ErrorHandler.Factory.createFSPIOPError(ErrorHandler.Enums.FSPIOPErrorCodes.INTERNAL_SERVER_ERROR, 'Action not allowed for reconciliationTransferPrepare')
         }
 
-        //TODO @jason, store in TB -> [HUB] + DFSP_SETTLEMENT
+        //TODO @jason, store in TB -> [HUB] + [DFSP_SETTLEMENT]
+        if (Config.TIGERBEETLE.enabled) {
+          //[HUB] Transfer
+          Logger.info('reconciliation-Payload-reconciliation: ' + util.inspect(payload))
+          Logger.info('reconciliation        : ' + util.inspect(reconciliationAccountId))
+          //TODO await Tb.tbTransfer(....)
+          //TODO await Tb.tbPrepareTransfer(....)
+        }
 
         // Insert transferParticipant records
         await knex('transferParticipant')

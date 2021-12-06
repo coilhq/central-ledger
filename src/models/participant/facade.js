@@ -30,6 +30,7 @@
 
 const Db = require('../../lib/db')
 const Tb = require('../../lib/tb')
+const Logger = require('@mojaloop/central-services-logger')
 const Time = require('@mojaloop/central-services-shared').Util.Time
 const ErrorHandler = require('@mojaloop/central-services-error-handling')
 const Metrics = require('@mojaloop/central-services-metrics')
@@ -647,6 +648,11 @@ const addHubAccountAndInitPosition = async (participantId, currencyId, ledgerAcc
     const knex = Db.getKnex()
     return knex.transaction(async trx => {
       try {
+        if (Config.TIGERBEETLE.enabled) {
+          Logger.info('Creating HUB Account ' + participantId + ':' + currencyId + ':' + ledgerAccountTypeId)
+          await Tb.tbCreateAccount(participantId, ledgerAccountTypeId, currencyId)
+        }
+
         let result
         const participantCurrency = {
           participantId,

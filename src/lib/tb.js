@@ -70,7 +70,6 @@ const tbCreateAccount = async (id, accountType = 1, currencyTxt = 'USD') => {
     const currencyU16 = obtainUnitFromCurrency(currencyTxt)
     const tbId = tbIdFrom(userData, currencyU16, accountType)
 
-    //Participant A
     const account = {
       id: tbId, // u128 (137n)
       user_data: userData, // u128, opaque third-party identifier to link this account (many-to-one) to an external entity:
