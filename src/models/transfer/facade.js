@@ -903,10 +903,29 @@ const reconciliationTransferPrepare = async function (payload, transactionTimest
         //TODO @jason, store in TB -> [HUB] + [DFSP_SETTLEMENT]
         if (Config.TIGERBEETLE.enabled) {
           //[HUB] Transfer
-          Logger.info('reconciliation-Payload-reconciliation: ' + util.inspect(payload))
-          Logger.info('reconciliation        : ' + util.inspect(reconciliationAccountId))
+          const transferRecord = {
+            transferId: payload.transferId,
+            amount: amount,
+          }
+          const payerTransferParticipantRecord = {
+            ledgerEntryTypeId: ledgerEntryTypeId,
+            participantCurrencyId: reconciliationAccountId
+          }
+          const payeeTransferParticipantRecord = {
+            participantCurrencyId: payload.participantCurrencyId
+          }
+          const participants = [];//TODO looukp
+
+          Logger.info('--> reconciliation-Payload-reconciliation: ' + util.inspect(payload))
+          Logger.info('--> reconciliation        : ' + util.inspect(reconciliationAccountId))
           //TODO await Tb.tbTransfer(....)
-          //TODO await Tb.tbPrepareTransfer(....)
+          /*TODO await Tb.tbPrepareTransfer(
+            transferRecord,
+            payerTransferParticipantRecord,
+            payeeTransferParticipantRecord,
+            participants,
+            null
+          )*/
         }
 
         // Insert transferParticipant records
