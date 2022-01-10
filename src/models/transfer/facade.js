@@ -337,6 +337,12 @@ const savePayeeTransferResponse = async (transferId, payload, action, fspiopErro
       ['success', 'queryName']
     ).startTimer()
 
+    const dbInsertTransferFulfilment = async (logHistogram) => {
+      await knex.transaction(async (trx) => {
+
+      })
+    }
+
     await knex.transaction(async (trx) => {
       try {
         if (!fspiopError && [TransferEventAction.COMMIT, TransferEventAction.BULK_COMMIT, TransferEventAction.RESERVE].includes(action)) {
@@ -470,44 +476,57 @@ const saveTransferPrepared = async (payload, stateReason = null, hasPassedValida
         'facade_saveTransferPrepared_transaction - Metrics for transfer model',
         ['success', 'queryName']
       ).startTimer()
-      return await knex.transaction(async (trx) => {
-        try {
-          if (Config.TIGERBEETLE.enabled) {
-            await Tb.tbPrepareTransfer(
-              transferRecord,
-              payerTransferParticipantRecord,
-              payeeTransferParticipantRecord,
-              participants,
-              participantCurrencyIds
-            )
-          }
 
-          await knex('transfer').transacting(trx).insert(transferRecord)//TODO done in TB
-          await knex('transferParticipant').transacting(trx).insert(payerTransferParticipantRecord)//TODO done in TB
-          await knex('transferParticipant').transacting(trx).insert(payeeTransferParticipantRecord)//TODO done in TB
-          payerTransferParticipantRecord.name = payload.payerFsp
-          payeeTransferParticipantRecord.name = payload.payeeFsp
-          let transferExtensionsRecordList = []
-          if (payload.extensionList && payload.extensionList.extension) {
-            transferExtensionsRecordList = payload.extensionList.extension.map(ext => {
-              return {
-                transferId: payload.transferId,
-                key: ext.key,
-                value: ext.value
-              }
-            })
-            await knex.batchInsert('transferExtension', transferExtensionsRecordList).transacting(trx)
+      const dbInsertTransfer = async (logHistogram) => {
+        await knex.transaction(async (trx) => {
+          try {
+            await knex('transfer').transacting(trx).insert(transferRecord)//TODO done in TB
+            await knex('transferParticipant').transacting(trx).insert(payerTransferParticipantRecord)//TODO done in TB
+            await knex('transferParticipant').transacting(trx).insert(payeeTransferParticipantRecord)//TODO done in TB
+            payerTransferParticipantRecord.name = payload.payerFsp
+            payeeTransferParticipantRecord.name = payload.payeeFsp
+            let transferExtensionsRecordList = []
+            if (payload.extensionList && payload.extensionList.extension) {
+              transferExtensionsRecordList = payload.extensionList.extension.map(ext => {
+                return {
+                  transferId: payload.transferId,
+                  key: ext.key,
+                  value: ext.value
+                }
+              })
+              await knex.batchInsert('transferExtension', transferExtensionsRecordList).transacting(trx)
+            }
+            await knex('ilpPacket').transacting(trx).insert(ilpPacketRecord)//TODO @jason need to confirm why not? We have 32 instead of 47
+            await knex('transferStateChange').transacting(trx).insert(transferStateChangeRecord)
+            await trx.commit()
+            logHistogram && histTimerSaveTranferTransactionValidationPassedEnd({ success: true, queryName: 'facade_saveTransferPrepared_transaction' })
+          } catch (errDB) {
+            await trx.rollback()
+            logHistogram && histTimerSaveTranferTransactionValidationPassedEnd({ success: false, queryName: 'facade_saveTransferPrepared_transaction' })
+            throw errDB
           }
-          await knex('ilpPacket').transacting(trx).insert(ilpPacketRecord)//TODO @jason need to confirm why not? We have 32 instead of 47
-          await knex('transferStateChange').transacting(trx).insert(transferStateChangeRecord)
-          await trx.commit()
+        })
+      }
+
+      if (Config.TIGERBEETLE.enabled) {
+        try {
+          await Tb.tbPrepareTransfer(
+            transferRecord,
+            payerTransferParticipantRecord,
+            payeeTransferParticipantRecord,
+            participants,
+            participantCurrencyIds
+          )
           histTimerSaveTranferTransactionValidationPassedEnd({ success: true, queryName: 'facade_saveTransferPrepared_transaction' })
-        } catch (err) {
-          await trx.rollback()
+        } catch (errTB) {
           histTimerSaveTranferTransactionValidationPassedEnd({ success: false, queryName: 'facade_saveTransferPrepared_transaction' })
-          throw err
+          throw errTB
         }
-      })
+
+        dbInsertTransfer(false)
+      } else {
+        await dbInsertTransfer(true)
+      }
     } else {
       const histTimerSaveTranferNoValidationEnd = Metrics.getHistogram(
         'model_transfer',

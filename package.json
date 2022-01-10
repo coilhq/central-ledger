@@ -121,7 +121,7 @@
     "rc": "1.2.8",
     "require-glob": "^4.0.0",
     "uuid4": "2.0.2",
-    "tigerbeetle-node": "0.4.3"
+    "tigerbeetle-node": "0.5.0"
   },
   "optionalDependencies": {
     "mysql": "2.18.1"

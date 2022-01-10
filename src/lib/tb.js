@@ -121,6 +121,24 @@ const tbLookupAccount = async (id, accountType = 1, currencyTxt = 'USD') => {
   }
 }
 
+const tbLookupTransfer = async (id) => {
+  try {
+    const client = await getTBClient()
+    if (client == null) return {}
+
+    const tbId = BigInt(id)
+
+    Logger.info('Fetching Transfer '+tbId)
+
+    const transfers = await client.lookupTransfers(tbId)
+    Logger.error('TransferLookup: '+util.inspect(transfers))
+    if (transfers.length > 0) return transfers[0]
+    return {}
+  } catch (err) {
+    throw ErrorHandler.Factory.reformatFSPIOPError(err)
+  }
+}
+
 const tbTransfer = async (
   transferRecord,
   payerTransferParticipantRecord,
@@ -309,6 +327,8 @@ const obtainUnitFromCurrency = (currencyTxt) => {
 const tbIdFrom = (userData, currencyTxt, accountTypeNumeric) => {
   const combined = ''+userData+'-'+currencyTxt+'-'+accountTypeNumeric
   Logger.info('-------------__>   '+ combined)
+  //TODO @jason Replace md5 with SHA-256
+  //TODO @jason, perhaps replace the hashing completely...
 
   const md5Hasher = crypto.createHmac('md5', secret)
   const hash = md5Hasher.update(combined).digest('hex')
@@ -338,6 +358,7 @@ module.exports = {
   tbPrepareTransfer, //TODO @jason: Need to add the rollback functions here...
   tbFulfilTransfer,
   tbLookupAccount,
+  tbLookupTransfer,
   tbDestroy
 }
 
