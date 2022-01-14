@@ -1,5 +1,7 @@
-package io.mojaloop.centralledger.jmeter;
+package io.mojaloop.centralledger.jmeter.runner;
 
+import io.mojaloop.centralledger.jmeter.rest.client.participant.Account;
+import io.mojaloop.centralledger.jmeter.rest.client.json.account.DFSPClient;
 import lombok.RequiredArgsConstructor;
 import org.apache.jmeter.samplers.SampleResult;
 import org.slf4j.Logger;
@@ -18,26 +20,23 @@ import java.util.concurrent.ConcurrentLinkedQueue;
  */
 @RequiredArgsConstructor
 public class SamplerRunner {
-
 	private static final int QUEUE_MAX = 5000000;
 
 	private static Map<String, Queue<Long>> VALID_PREPARES = new Hashtable<>();
 
 	private final Logger logger;
+	private final DFSPClient dfspClient;
 
 	public void execute(
-		Object testData,
+		TestDataCarrier testData,
 		SampleResult result,
-		int testDataIndex,
-		boolean userQueryPopulateAncestorIdParam,
-		int userQueryLimitParam
+		int testDataIndex
 	) {
 		String contentToSend = null, responseData = null;
 		Long prevInsertedFormId = null;
 		try {
-			switch (testData.toString()) {
-				case "prepare":
-					boolean addToPI = false;
+			switch (testData.getActionType()) {
+				case create_account:
 					result.setRequestHeaders(
 							this.createHeaderVal(
 									"",
@@ -48,8 +47,10 @@ public class SamplerRunner {
 					result.setSampleLabel(String.format("%s:%s", result.getSampleLabel(), "TODO"));
 
 					result.sampleStart();
+					Account createdAccount = this.dfspClient.createAccount((Account) testData.getRequest());
 					//TODO REST request comes here...
 					result.sampleEnd();
+					testData.setResponse(createdAccount);
 
 					responseData = testData.toString();
 					result.setResponseData(responseData, "UTF-8");

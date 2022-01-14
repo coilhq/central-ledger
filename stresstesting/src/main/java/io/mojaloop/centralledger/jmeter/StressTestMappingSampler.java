@@ -1,5 +1,8 @@
 package io.mojaloop.centralledger.jmeter;
 
+import io.mojaloop.centralledger.jmeter.rest.client.json.account.DFSPClient;
+import io.mojaloop.centralledger.jmeter.runner.SamplerRunner;
+import io.mojaloop.centralledger.jmeter.runner.TestDataCarrier;
 import org.apache.jmeter.config.Arguments;
 import org.apache.jmeter.protocol.java.sampler.AbstractJavaSamplerClient;
 import org.apache.jmeter.protocol.java.sampler.JavaSamplerContext;
@@ -12,7 +15,6 @@ import java.io.IOException;
 import java.net.URL;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -30,16 +32,14 @@ public class StressTestMappingSampler extends AbstractJavaSamplerClient {
 	private Logger logger = this.getNewLogger();
 
 	private String inputFile = null;
+	private String url = "http://localhost";
 
-	private String url = "http://localhost:8080/fluid-ws/";
-	private String adminPassword = "12345";
-	private Boolean userQueryPopulateAncestor = false;
-	private Integer userQueryFetchLimit = 30;
+	private DFSPClient dfspClient = null;
 
 	private int counter;
 	private int commandCount;
 
-	private List<Object> allTestData;
+	private List<TestDataCarrier> allTestData;
 
 	private Map<String, Object> validPrepare = new ConcurrentHashMap<>();
 
@@ -53,7 +53,6 @@ public class StressTestMappingSampler extends AbstractJavaSamplerClient {
 		this.inputFile = contextParam.getParameter(Arg._0_INPUT_FILE);
 		File file = null;
 		try (FileInputStream fis = new FileInputStream(file)) {
-
 			this.allTestData = null;
 			this.commandCount = this.allTestData.size();
 			this.logger.info(
@@ -65,9 +64,10 @@ public class StressTestMappingSampler extends AbstractJavaSamplerClient {
 		}
 
 		this.url = contextParam.getParameter(Arg._1_URL, this.url);
+		this.dfspClient = new DFSPClient(this.url);
 
 		//Populate the form containers...
-		this.logger.info("Initiation of test data COMPLETE.");
+		this.logger.info("Initiation of test data for [{}] COMPLETE.", this.url);
 	}
 
 	@Override
@@ -81,7 +81,7 @@ public class StressTestMappingSampler extends AbstractJavaSamplerClient {
 	@Override
 	public SampleResult runTest(JavaSamplerContext javaSamplerContext) {
 		SampleResult returnVal = new SampleResult();
-		Object testData = this.allTestData.get(this.counter);
+		TestDataCarrier testData = this.allTestData.get(this.counter);
 		returnVal.setSentBytes(testData.toString().getBytes().length);
 
 		String testDataType = "";
@@ -96,14 +96,11 @@ public class StressTestMappingSampler extends AbstractJavaSamplerClient {
 			returnVal.setContentType("application/json");
 
 			//The execution utility...
-			SamplerRunner sr = new SamplerRunner(this.logger);
+			SamplerRunner sr = new SamplerRunner(this.logger, this.dfspClient);
 
 			Integer testDataIndex = Integer.valueOf(this.counter + 2);
 
-			int queryLimit = new Random().nextInt(this.userQueryFetchLimit);
-			queryLimit = (queryLimit < 1) ? 1 : queryLimit;
-			sr.execute(testData, returnVal, testDataIndex, this.userQueryPopulateAncestor, queryLimit);
-
+			sr.execute(testData, returnVal, testDataIndex);
 		} catch (Exception exception) {
 			this.logger.error("Request was not successfully processed. "+ exception.getMessage(),exception);
 			returnVal.setResponseMessage("ERROR-EXCEPTION ("+

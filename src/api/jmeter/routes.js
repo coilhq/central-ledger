@@ -24,23 +24,40 @@
  ******/
 'use strict'
 
-const Transaction = require('../../domain/transactions')
-const ErrorHandler = require('@mojaloop/central-services-error-handling')
-const Logger = require('@mojaloop/central-services-logger')
+const Handler = require('./handler')
+const Joi = require('joi')
+const tags = ['api', 'jmeter']
 
-const getById = async function (request) {
-  try {
-    const entity = await Transaction.getById(request.params.id)
-    if (entity && entity.length > 0) {
-      return await Transaction.getTransactionObject(entity[0].value)
+const nameValidator = Joi.string().alphanum().min(2).max(30).required().description('Name of the participant')
+
+module.exports = [
+  {
+    method: 'GET',
+    path: '/jmeter/transactions/ilp/{id}',
+    handler: Handler.getIlpTransactionById,
+    options: {
+      tags,
+      description: 'jMeter API used for retrieving a ILP transaction by id.',
+      validate: {
+        params: Joi.object({
+          id: Joi.string().required().description('Transaction id')
+        })
+      }
     }
-    throw ErrorHandler.Factory.createFSPIOPError(ErrorHandler.Enums.FSPIOPErrorCodes.ID_NOT_FOUND, 'The requested resource could not be found.')
-  } catch (err) {
-    Logger.isErrorEnabled && Logger.error(err)
-    throw ErrorHandler.Factory.reformatFSPIOPError(err)
+  },
+  {
+    method: 'GET',
+    path: '/jmeter/participants/{name}/transfers/{id}',
+    handler: Handler.getTransferById,
+    options: {
+      tags,
+      description: 'jMeter API used for retrieving a MJL transaction by id.',
+      validate: {
+        params: Joi.object({
+          name: nameValidator,
+          id: Joi.string().required().description('Transfer id')
+        })
+      }
+    }
   }
-}
-
-module.exports = {
-  getById
-}
+]

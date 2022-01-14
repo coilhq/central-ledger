@@ -24,7 +24,8 @@
 		<dependency>
 			<groupId>org.apache.jmeter</groupId>
 			<artifactId>ApacheJMeter_java</artifactId>
-			<version>5.4.3</version>
+			<!--version>5.4.3</version-->
+			<version>5.2.1</version>
 			<scope>provided</scope>
 		</dependency>
 
@@ -130,12 +131,12 @@
 				<artifactId>maven-assembly-plugin</artifactId>
 				<version>3.3.0</version>
 				<configuration>
-					<!--archive>
+					<archive>
 						<manifest>
 							<addClasspath>true</addClasspath>
-							<mainClass>com.mojaloop.centralledger.Main</mainClass>
+							<mainClass>io.mojaloop.centralledger.main.Main</mainClass>
 						</manifest>
-					</archive-->
+					</archive>
 					<descriptorRefs>
 						<descriptorRef>jar-with-dependencies</descriptorRef>
 					</descriptorRefs>

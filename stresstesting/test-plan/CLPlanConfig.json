@@ -1,0 +1,5 @@
+{
+  "max-accounts" : 10000,
+  "transfers" : 300,
+  "rejections" : 20
+}

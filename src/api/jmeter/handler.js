@@ -25,10 +25,11 @@
 'use strict'
 
 const Transaction = require('../../domain/transactions')
+const Transfer = require('../../domain/transfer')
 const ErrorHandler = require('@mojaloop/central-services-error-handling')
 const Logger = require('@mojaloop/central-services-logger')
 
-const getById = async function (request) {
+const getIlpTransactionById = async function (request) {
   try {
     const entity = await Transaction.getById(request.params.id)
     if (entity && entity.length > 0) {
@@ -36,11 +37,28 @@ const getById = async function (request) {
     }
     throw ErrorHandler.Factory.createFSPIOPError(ErrorHandler.Enums.FSPIOPErrorCodes.ID_NOT_FOUND, 'The requested resource could not be found.')
   } catch (err) {
+    console.error(err)
+    Logger.isErrorEnabled && Logger.error(err)
+    throw ErrorHandler.Factory.reformatFSPIOPError(err)
+  }
+}
+
+const getTransferById = async function (request) {
+  try {
+    //http://localhost:3001/jmeter/participants/payeeFsp47384172/transfers/1a097f1f-e6aa-48ec-bcab-0dfce9cd25cf
+    const entity = await Transfer.getTransferParticipant(request.params.name, request.params.id)
+    if (entity && entity.length > 0) {
+      return entity
+    }
+    throw ErrorHandler.Factory.createFSPIOPError(ErrorHandler.Enums.FSPIOPErrorCodes.ID_NOT_FOUND, 'The requested resource could not be found.')
+  } catch (err) {
+    console.error(err)
     Logger.isErrorEnabled && Logger.error(err)
     throw ErrorHandler.Factory.reformatFSPIOPError(err)
   }
 }
 
 module.exports = {
-  getById
+  getIlpTransactionById,
+  getTransferById
 }
