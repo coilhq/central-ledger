@@ -18,8 +18,8 @@
  * Gates Foundation
  - Name Surname <name.surname@gatesfoundation.com>
 
- * ModusBox
- - Lazola Lucas <lazola.lucas@modusbox.com>
+ * Coil
+ - Jason Bruwer <jason.bruwer@coil.com>
  --------------
  ******/
 'use strict'
@@ -28,6 +28,8 @@ const Transaction = require('../../domain/transactions')
 const Transfer = require('../../domain/transfer')
 const ErrorHandler = require('@mojaloop/central-services-error-handling')
 const Logger = require('@mojaloop/central-services-logger')
+const Enum = require('@mojaloop/central-services-shared').Enum
+const TransferEventAction = Enum.Events.Event.Action
 
 const getIlpTransactionById = async function (request) {
   try {
@@ -58,7 +60,37 @@ const getTransferById = async function (request) {
   }
 }
 
+const prepareTransfer = async function (request) {
+  try {
+    const body = request.payload
+    await Transfer.prepare(body, null, true)
+    if (body.fulfil) {
+      fulfilTransfer(request)
+    }
+  } catch (err) {
+    Logger.isErrorEnabled && Logger.error(err)
+    throw ErrorHandler.Factory.reformatFSPIOPError(err)
+  }
+}
+
+const fulfilTransfer = async function (request) {
+  try {
+    const body = request.payload
+    var eventAction = TransferEventAction.COMMIT
+    if (body.reject) {
+      eventAction = TransferEventAction.REJECT
+    }
+    const transferId = body.transferId;
+    await Transfer.handlePayeeResponse(transferId, body, eventAction, null)
+  } catch (err) {
+    Logger.isErrorEnabled && Logger.error(err)
+    throw ErrorHandler.Factory.reformatFSPIOPError(err)
+  }
+}
+
 module.exports = {
   getIlpTransactionById,
-  getTransferById
+  getTransferById,
+  prepareTransfer,
+  fulfilTransfer
 }

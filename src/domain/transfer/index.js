@@ -65,6 +65,8 @@ const handlePayeeResponse = async (transferId, payload, action, fspiopError) => 
   ).startTimer()
 
   try {
+
+    TransferEventAction.COMMIT
     const transfer = await TransferFacade.savePayeeTransferResponse(transferId, payload, action, fspiopError)
     const result = TransferObjectTransform.toTransfer(transfer)
     histTimerTransferServiceHandlePayeeResponseEnd({ success: true, funcName: 'handlePayeeResponse' })

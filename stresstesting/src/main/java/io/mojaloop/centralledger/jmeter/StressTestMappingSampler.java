@@ -1,8 +1,8 @@
 package io.mojaloop.centralledger.jmeter;
 
-import io.mojaloop.centralledger.jmeter.rest.client.json.account.DFSPClient;
+import io.mojaloop.centralledger.jmeter.rest.client.DFSPClient;
 import io.mojaloop.centralledger.jmeter.runner.SamplerRunner;
-import io.mojaloop.centralledger.jmeter.runner.TestDataCarrier;
+import io.mojaloop.centralledger.jmeter.rest.client.json.testdata.TestDataCarrier;
 import org.apache.jmeter.config.Arguments;
 import org.apache.jmeter.protocol.java.sampler.AbstractJavaSamplerClient;
 import org.apache.jmeter.protocol.java.sampler.JavaSamplerContext;

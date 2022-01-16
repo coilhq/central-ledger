@@ -18,8 +18,8 @@
  * Gates Foundation
  - Name Surname <name.surname@gatesfoundation.com>
 
- * ModusBox
- - Lazola Lucas <lazola.lucas@modusbox.com>
+ * Coil
+ *  - Jason Bruwer <jason.bruwer@coil.com>
  --------------
  ******/
 'use strict'
@@ -57,6 +57,24 @@ module.exports = [
           name: nameValidator,
           id: Joi.string().required().description('Transfer id')
         })
+      }
+    }
+  },
+  {
+    method: 'POST',
+    path: '/jmeter/transfers/prepare',
+    handler: Handler.prepareTransfer,
+    options: {
+      tags,
+      payload: {
+        allow: ['application/json'],
+        failAction: 'error'
+      },
+      validate: {
+        payload: Joi.object({
+          fulfil: Joi.boolean().required().description('Should the fulfil operation also be performed.'),
+          transferId: Joi.string().required()
+        }),
       }
     }
   }

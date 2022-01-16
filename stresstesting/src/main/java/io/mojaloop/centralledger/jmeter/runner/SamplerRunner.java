@@ -1,7 +1,8 @@
 package io.mojaloop.centralledger.jmeter.runner;
 
-import io.mojaloop.centralledger.jmeter.rest.client.participant.Account;
-import io.mojaloop.centralledger.jmeter.rest.client.json.account.DFSPClient;
+import io.mojaloop.centralledger.jmeter.rest.client.DFSPClient;
+import io.mojaloop.centralledger.jmeter.rest.client.json.participant.Participant;
+import io.mojaloop.centralledger.jmeter.rest.client.json.testdata.TestDataCarrier;
 import lombok.RequiredArgsConstructor;
 import org.apache.jmeter.samplers.SampleResult;
 import org.slf4j.Logger;
@@ -33,10 +34,9 @@ public class SamplerRunner {
 		int testDataIndex
 	) {
 		String contentToSend = null, responseData = null;
-		Long prevInsertedFormId = null;
 		try {
 			switch (testData.getActionType()) {
-				case create_account:
+				case create_participant:
 					result.setRequestHeaders(
 							this.createHeaderVal(
 									"",
@@ -47,10 +47,10 @@ public class SamplerRunner {
 					result.setSampleLabel(String.format("%s:%s", result.getSampleLabel(), "TODO"));
 
 					result.sampleStart();
-					Account createdAccount = this.dfspClient.createAccount((Account) testData.getRequest());
+					Participant createdParticipant = this.dfspClient.createParticipant((Participant) testData.getRequest());
 					//TODO REST request comes here...
 					result.sampleEnd();
-					testData.setResponse(createdAccount);
+					testData.setResponse(createdParticipant);
 
 					responseData = testData.toString();
 					result.setResponseData(responseData, "UTF-8");
