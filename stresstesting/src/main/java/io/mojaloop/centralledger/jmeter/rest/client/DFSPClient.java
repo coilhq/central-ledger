@@ -3,6 +3,11 @@ package io.mojaloop.centralledger.jmeter.rest.client;
 import io.mojaloop.centralledger.jmeter.rest.client.json.participant.Accounts;
 import io.mojaloop.centralledger.jmeter.rest.client.json.participant.Participant;
 import io.mojaloop.centralledger.jmeter.rest.client.json.transfer.Transfer;
+import org.json.JSONArray;
+
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  *
  */
@@ -23,6 +28,18 @@ public class DFSPClient extends ABaseRESTClient {
 	/**
 	 * @see Participant
 	 */
+	public List<Participant> getAllParticipants() {
+		JSONArray array = this.getJsonArray("/participants", null);
+		List<Participant> returnVal = new ArrayList<>();
+		for (int index = 0;index < array.length();index++) {
+			returnVal.add(new Participant(array.getJSONObject(index)));
+		}
+		return returnVal;
+	}
+
+	/**
+	 * @see Participant
+	 */
 	public Participant createParticipant(Participant toCreate) {
 		return new Participant(this.postJson(toCreate, "/participants"));
 	}
@@ -36,5 +53,10 @@ public class DFSPClient extends ABaseRESTClient {
 
 	public Transfer jMeterTransferPrepare(Transfer transfer) {
 		return new Transfer(this.postJson(transfer, "/jmeter/transfers/prepare"));
+	}
+
+	public Transfer jMeterTransferLookup(String participant, String transferId) {
+		String lookupUri = String.format("/jmeter/participants/%s/transfers/%s", participant, transferId);
+		return new Transfer(this.getJson(lookupUri));
 	}
 }

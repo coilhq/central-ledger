@@ -5,12 +5,16 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.Serializable;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 /**
  *
  * @see JSONObject
  */
 public abstract class ABaseJSONObject implements Serializable {
+	public static final String DATE_AND_TIME_FORMAT = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'";//2022-01-17T12:12:18.425Z
 
 	public static final long serialVersionUID = 1L;
 
@@ -22,6 +26,20 @@ public abstract class ABaseJSONObject implements Serializable {
 	 */
 	public static class JSONMapping {
 
+	}
+
+	protected Date dateFrom(JSONObject jsonObject, String tagName) {
+		if (jsonObject.isNull(tagName)) return null;
+
+		String date = jsonObject.getString(tagName);
+		if (date == null || date.trim().isEmpty()) return null;
+		if (date.startsWith("\"") && date.endsWith("\"")) date = date.substring(1, date.length() - 1);
+		try {
+			return new SimpleDateFormat(DATE_AND_TIME_FORMAT).parse(date);
+		} catch (ParseException nfe) {
+			nfe.printStackTrace();
+			return null;
+		}
 	}
 
 	/**

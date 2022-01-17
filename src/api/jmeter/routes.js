@@ -26,9 +26,11 @@
 
 const Handler = require('./handler')
 const Joi = require('joi')
+const {currencyList} = require("../../../seeds/currency");
 const tags = ['api', 'jmeter']
 
 const nameValidator = Joi.string().alphanum().min(2).max(30).required().description('Name of the participant')
+const currencyValidator = Joi.string().valid(...currencyList).description('Currency code')
 
 module.exports = [
   {
@@ -37,7 +39,7 @@ module.exports = [
     handler: Handler.getIlpTransactionById,
     options: {
       tags,
-      description: 'jMeter API used for retrieving a ILP transaction by id.',
+      description: '[jMeter] API used for retrieving a ILP transaction by id.',
       validate: {
         params: Joi.object({
           id: Joi.string().required().description('Transaction id')
@@ -51,7 +53,7 @@ module.exports = [
     handler: Handler.getTransferById,
     options: {
       tags,
-      description: 'jMeter API used for retrieving a MJL transaction by id.',
+      description: '[jMeter] API used for retrieving a MJL transaction by id.',
       validate: {
         params: Joi.object({
           name: nameValidator,
@@ -66,14 +68,30 @@ module.exports = [
     handler: Handler.prepareTransfer,
     options: {
       tags,
+      description: '[jMeter] API used for preparing a 2-phase transfer (optional fulfill may be provided).',
       payload: {
-        allow: ['application/json'],
-        failAction: 'error'
+        allow: ['application/json']//,
+        //failAction: 'error'
       },
       validate: {
         payload: Joi.object({
           fulfil: Joi.boolean().required().description('Should the fulfil operation also be performed.'),
-          transferId: Joi.string().required()
+          transferId: Joi.string().required(),
+          payerFsp: Joi.string().required().description('Payer is required'),
+          payeeFsp: Joi.string().required().description('Payee is required'),
+          condition: Joi.string().required().description('Condition is required'),
+          ilpPacket: Joi.string().required().description('ILPPacket is required'),
+          expiration: Joi.string().required().description('Expiration is required'),
+          amount: Joi.object({
+            amount: Joi.number().positive().precision(4).required(),
+            currency: currencyValidator
+          }).required().label('No amount provided'),
+          extensionList: Joi.object({
+            extension: Joi.array().items({
+              key: Joi.string(),
+              value: Joi.string()
+            })
+          })
         }),
       }
     }

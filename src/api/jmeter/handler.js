@@ -48,9 +48,29 @@ const getIlpTransactionById = async function (request) {
 const getTransferById = async function (request) {
   try {
     //http://localhost:3001/jmeter/participants/payeeFsp47384172/transfers/1a097f1f-e6aa-48ec-bcab-0dfce9cd25cf
+    //http://localhost:3001/jmeter/participants/payerFsp55863996/transfers/5447aa9c-9d8b-4962-b35d-55ad6e55f48c
+
     const entity = await Transfer.getTransferParticipant(request.params.name, request.params.id)
     if (entity && entity.length > 0) {
-      return entity
+      //[
+      //   {
+      //     "transferParticipantId": 1256,
+      //     "transferId": "5447aa9c-9d8b-4962-b35d-55ad6e55f48c",
+      //     "participantCurrencyId": 1837,
+      //     "transferParticipantRoleTypeId": 1,
+      //     "ledgerEntryTypeId": 1,
+      //     "amount": 10,
+      //     "createdDate": "2022-01-17T17:25:31.000Z"
+      //   }
+      // ]
+      const returnVal = {
+        'transferId' : entity[0].transferId,
+        'amount' : {
+          'currency' : entity[0].currency,
+          'amount' : entity[0].amount
+        }
+      }
+      return returnVal
     }
     throw ErrorHandler.Factory.createFSPIOPError(ErrorHandler.Enums.FSPIOPErrorCodes.ID_NOT_FOUND, 'The requested resource could not be found.')
   } catch (err) {
@@ -60,14 +80,18 @@ const getTransferById = async function (request) {
   }
 }
 
-const prepareTransfer = async function (request) {
+const prepareTransfer = async function (request, h) {
   try {
     const body = request.payload
     await Transfer.prepare(body, null, true)
+
     if (body.fulfil) {
-      fulfilTransfer(request)
+      return await fulfilTransfer(request)
     }
+    return body
   } catch (err) {
+    console.log("ERROR!!!! : ")
+    console.log(err)
     Logger.isErrorEnabled && Logger.error(err)
     throw ErrorHandler.Factory.reformatFSPIOPError(err)
   }
@@ -77,10 +101,10 @@ const fulfilTransfer = async function (request) {
   try {
     const body = request.payload
     var eventAction = TransferEventAction.COMMIT
-    if (body.reject) {
-      eventAction = TransferEventAction.REJECT
-    }
+    if (body.reject) eventAction = TransferEventAction.REJECT
+
     const transferId = body.transferId;
+    //TODO await Transfer.saveTransferFulfilmentDuplicateCheck(transferId, 'helper.hash')
     await Transfer.handlePayeeResponse(transferId, body, eventAction, null)
   } catch (err) {
     Logger.isErrorEnabled && Logger.error(err)

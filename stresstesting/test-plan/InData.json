@@ -1,0 +1,24 @@
+[
+  {
+    "actionType": "transfer_prepare",
+    "request": {
+      "payerFsp": "payerFsp55863996",
+      "amount": {
+        "amount": 10,
+        "currency": "USD"
+      },
+      "condition": "GRzLaTP7DJ9t4P-a_BA0WA9wzzlsugf00-Tn6kESAfM",
+      "payeeFsp": "payeeFsp55864046",
+      "ilpPacket": "AYIBgQAAAAAAAASwNGxldmVsb25lLmRmc3AxLm1lci45T2RTOF81MDdqUUZERmZlakgyOVc4bXFmNEpLMHlGTFGCAUBQU0svMS4wCk5vbmNlOiB1SXlweUYzY3pYSXBFdzVVc05TYWh3CkVuY3J5cHRpb246IG5vbmUKUGF5bWVudC1JZDogMTMyMzZhM2ItOGZhOC00MTYzLTg0NDctNGMzZWQzZGE5OGE3CgpDb250ZW50LUxlbmd0aDogMTM1CkNvbnRlbnQtVHlwZTogYXBwbGljYXRpb24vanNvbgpTZW5kZXItSWRlbnRpZmllcjogOTI4MDYzOTEKCiJ7XCJmZWVcIjowLFwidHJhbnNmZXJDb2RlXCI6XCJpbnZvaWNlXCIsXCJkZWJpdE5hbWVcIjpcImFsaWNlIGNvb3BlclwiLFwiY3JlZGl0TmFtZVwiOlwibWVyIGNoYW50XCIsXCJkZWJpdElkZW50aWZpZXJcIjpcIjkyODA2MzkxXCJ9IgA",
+      "expiration": null,
+      "transferId": "a3856994-1ee8-491a-a64f-4109c0a44b30",
+      "fulfil": true
+    },
+    "response": null
+  },
+  {
+    "actionType": "transfer_lookup",
+    "request": null,
+    "response": null
+  }
+]

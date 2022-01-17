@@ -204,8 +204,8 @@ const tbPrepareTransfer = async (
     if (client == null) return {}
 
     Logger.info('1.1 Creating Transfer    '+util.inspect(transferRecord))
-    Logger.info('1.2 Creating Payer       '+util.inspect(payerTransferParticipantRecord))
-    Logger.info('1.3 Creating Payee       '+util.inspect(payeeTransferParticipantRecord))
+    Logger.info('1.2 Payer                '+util.inspect(payerTransferParticipantRecord))
+    Logger.info('1.3 Payee                '+util.inspect(payeeTransferParticipantRecord))
     Logger.info('1.4 Participants         '+util.inspect(participants))
     Logger.info('1.5 Participant Currency '+util.inspect(participantCurrencyIds))
 

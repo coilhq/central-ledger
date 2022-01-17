@@ -88,7 +88,7 @@ const saveTransferDuplicateCheck = async (transferId, hash) => {
   try {
     var result = 0
     if (Config.TIGERBEETLE.enabled) {
-      insertTransferDuplicateCheck(transferId, hash)
+      //insertTransferDuplicateCheck(transferId, hash)
       result = 1
     } else {
       result = await insertTransferDuplicateCheck(transferId, hash)

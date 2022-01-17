@@ -34,6 +34,7 @@
 
 const Db = require('../../lib/db')
 const Tb = require("../../lib/tb")
+const Crypto = require('crypto')
 const util = require('util')
 
 const Enum = require('@mojaloop/central-services-shared').Enum
@@ -337,7 +338,7 @@ const savePayeeTransferResponse = async (transferId, payload, action, fspiopErro
       ['success', 'queryName']
     ).startTimer()
 
-    const dbInsertTransferFulfilment = async (logHistogram) => {
+    const dbInsertTransferFulfilment = async (logHistogram, tbEnabled) => {
       await knex.transaction(async (trx) => {
 
       })
@@ -366,8 +367,12 @@ const savePayeeTransferResponse = async (transferId, payload, action, fspiopErro
           if (Config.TIGERBEETLE.enabled) {
             await Tb.tbFulfilTransfer(transferFulfilmentRecord)
           }
+          console.log('TB is done!')
+          console.log(transferFulfilmentRecord)
 
           await knex('transferFulfilment').transacting(trx).insert(transferFulfilmentRecord)
+          console.log('Here it is.')
+          console.log(transferFulfilmentRecord)
           result.transferFulfilmentRecord = transferFulfilmentRecord
           Logger.isDebugEnabled && Logger.debug('savePayeeTransferResponse::transferFulfilment')
         }
@@ -380,9 +385,13 @@ const savePayeeTransferResponse = async (transferId, payload, action, fspiopErro
           result.transferExtensionRecordsList = transferExtensionRecordsList
           Logger.isDebugEnabled && Logger.debug('savePayeeTransferResponse::transferExtensionRecordsList')
         }
+
+        console.log('Now for state change.')
         await knex('transferStateChange').transacting(trx).insert(transferStateChangeRecord)
         result.transferStateChangeRecord = transferStateChangeRecord
         Logger.isDebugEnabled && Logger.debug('savePayeeTransferResponse::transferStateChange')
+
+        console.log('Here it is state has changed.')
         if (fspiopError) {
           const insertedTransferStateChange = await knex('transferStateChange').transacting(trx)
             .where({ transferId })
@@ -397,6 +406,9 @@ const savePayeeTransferResponse = async (transferId, payload, action, fspiopErro
         result.savePayeeTransferResponseExecuted = true
         Logger.isDebugEnabled && Logger.debug('savePayeeTransferResponse::success')
       } catch (err) {
+        console.log('ERROR!')
+        console.log(err)
+
         await trx.rollback()
         histTPayeeResponseValidationPassedEnd({ success: false, queryName: 'facade_saveTransferPrepared_transaction' })
         Logger.isErrorEnabled && Logger.error('savePayeeTransferResponse::failure')
@@ -477,9 +489,18 @@ const saveTransferPrepared = async (payload, stateReason = null, hasPassedValida
         ['success', 'queryName']
       ).startTimer()
 
-      const dbInsertTransfer = async (logHistogram) => {
+      const dbInsertTransfer = async (logHistogram, tbEnabled) => {
         await knex.transaction(async (trx) => {
           try {
+            if (tbEnabled) {
+              const hashSha256 = Crypto.createHash('sha256')
+              let hash = JSON.stringify(payload)
+              hash = hashSha256.update(hash)
+              hash = hashSha256.digest(hash).toString('base64').slice(0, -1) // removing the trailing '=' as per the specification
+              const transferId = transferRecord.transferId;
+              await knex('transferDuplicateCheck').transacting(trx).insert({ transferId, hash })
+            }
+
             await knex('transfer').transacting(trx).insert(transferRecord)//TODO done in TB
             await knex('transferParticipant').transacting(trx).insert(payerTransferParticipantRecord)//TODO done in TB
             await knex('transferParticipant').transacting(trx).insert(payeeTransferParticipantRecord)//TODO done in TB
@@ -501,6 +522,7 @@ const saveTransferPrepared = async (payload, stateReason = null, hasPassedValida
             await trx.commit()
             logHistogram && histTimerSaveTranferTransactionValidationPassedEnd({ success: true, queryName: 'facade_saveTransferPrepared_transaction' })
           } catch (errDB) {
+            console.log(errDB)
             await trx.rollback()
             logHistogram && histTimerSaveTranferTransactionValidationPassedEnd({ success: false, queryName: 'facade_saveTransferPrepared_transaction' })
             throw errDB
@@ -523,9 +545,9 @@ const saveTransferPrepared = async (payload, stateReason = null, hasPassedValida
           throw errTB
         }
 
-        dbInsertTransfer(false)
+        dbInsertTransfer(false, true)
       } else {
-        await dbInsertTransfer(true)
+        await dbInsertTransfer(true, false)
       }
     } else {
       const histTimerSaveTranferNoValidationEnd = Metrics.getHistogram(
@@ -1194,8 +1216,6 @@ const reconciliationTransferAbort = async function (payload, transactionTimestam
 
 const getTransferParticipant = async (participantName, transferId) => {
   try {
-    //TODO @jason, make use of TB here...
-
     return Db.from('participant').query(async (builder) => {
       return builder
         .where({

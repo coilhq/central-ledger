@@ -17,6 +17,7 @@ import org.apache.http.impl.client.HttpClients;
 import org.apache.http.ssl.SSLContextBuilder;
 import org.apache.http.ssl.TrustStrategy;
 import org.apache.http.util.EntityUtils;
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -190,7 +191,7 @@ public abstract class ABaseRESTClient implements AutoCloseable {
 	 * Performs an HTTP-GET request with {@code postfixUrlParam}.
 	 *
 	 * @param postfixUrlParam URL mapping after the Base endpoint.
-	 * @param headerNameValuesParam The HTTP Headers to include.
+	 * @param headerNameValues The HTTP Headers to include.
 	 *
 	 * @return Return body as JSON.
 	 *
@@ -198,14 +199,15 @@ public abstract class ABaseRESTClient implements AutoCloseable {
 	 */
 	public JSONObject getJson(
 		String postfixUrlParam,
-		List<HeaderNameValue> headerNameValuesParam
+		List<HeaderNameValue> headerNameValues
 	) {
 		CloseableHttpClient httpclient = this.getClient();
 		try {
-			HttpGet httpGet = new HttpGet(this.endpointUrl.concat(postfixUrlParam));
+			String completeUri = this.endpointUrl.concat(postfixUrlParam);
+			HttpGet httpGet = new HttpGet(completeUri);
 
-			if (headerNameValuesParam != null && !headerNameValuesParam.isEmpty()) {
-				headerNameValuesParam.stream()
+			if (headerNameValues != null && !headerNameValues.isEmpty()) {
+				headerNameValues.stream()
 						.filter(hdrItm -> hdrItm.getName() != null && !hdrItm.getName().trim().isEmpty())
 						.filter(hdrItm -> hdrItm.getValue() != null && !hdrItm.getValue().trim().isEmpty())
 						.forEach(hdrItm -> {
@@ -221,16 +223,66 @@ public abstract class ABaseRESTClient implements AutoCloseable {
 						"No response data from '"+ this.endpointUrl.concat(postfixUrlParam)+"'.", RESTClientException.ErrorCode.IO_ERROR);
 			}
 
-			JSONObject jsonOjb = new JSONObject(responseBody);
-			if (jsonOjb.isNull(Error.JSONMapping.ERROR_CODE)) return jsonOjb;
-
-			int errorCode = jsonOjb.getInt(Error.JSONMapping.ERROR_CODE);
-			if (errorCode > 0) {
-				String errorMessage = (jsonOjb.isNull(Error.JSONMapping.ERROR_DESC)
-						? "Not set": jsonOjb.getString(Error.JSONMapping.ERROR_DESC));
-				throw new RESTClientException(errorMessage, errorCode);
+			JSONObject jsonOjb = null;
+			if (responseBody.startsWith("[")) {
+				JSONArray jsonArray = new JSONArray(responseBody);
+				if (jsonArray.length() > 0) jsonOjb = jsonArray.getJSONObject(0);
+			} else {
+				jsonOjb = new JSONObject(responseBody);
 			}
+
+			Error err = new Error(jsonOjb);
+			if (err.isError()) throw new RESTClientException(err.getErrorMessage(), err.getErrorCode());
+
 			return jsonOjb;
+		} catch (JSONException jsonExcept) {
+			throw new RESTClientException(jsonExcept.getMessage(), RESTClientException.ErrorCode.JSON_PARSING);
+		}
+	}
+
+	/**
+	 * Performs an HTTP-GET request with {@code postfixUrlParam}.
+	 *
+	 * @param postfixUrlParam URL mapping after the Base endpoint.
+	 * @param headerNameValues The HTTP Headers to include.
+	 *
+	 * @return Return body as JSON.
+	 *
+	 * @see JSONArray
+	 */
+	public JSONArray getJsonArray(
+		String postfixUrlParam,
+		List<HeaderNameValue> headerNameValues
+	) {
+		CloseableHttpClient httpclient = this.getClient();
+		try {
+			String completeUri = this.endpointUrl.concat(postfixUrlParam);
+			HttpGet httpGet = new HttpGet(completeUri);
+
+			if (headerNameValues != null && !headerNameValues.isEmpty()) {
+				headerNameValues.stream()
+						.filter(hdrItm -> hdrItm.getName() != null && !hdrItm.getName().trim().isEmpty())
+						.filter(hdrItm -> hdrItm.getValue() != null && !hdrItm.getValue().trim().isEmpty())
+						.forEach(hdrItm -> {
+							httpGet.setHeader(hdrItm.getName(), hdrItm.getValue());
+						});
+			}
+
+			// Create a custom response handler
+			ResponseHandler<String> responseHandler = this.getJsonResponseHandler(this.endpointUrl.concat(postfixUrlParam));
+			String responseBody = this.executeHttp(httpclient, httpGet, responseHandler, postfixUrlParam);
+			if (responseBody == null || responseBody.trim().isEmpty()) {
+				throw new RESTClientException(
+						"No response data from '"+ this.endpointUrl.concat(postfixUrlParam)+"'.", RESTClientException.ErrorCode.IO_ERROR);
+			}
+
+			if (responseBody.startsWith("[")) return new JSONArray(responseBody);
+
+			JSONObject jsonOjb = new JSONObject(responseBody);
+			Error err = new Error(jsonOjb);
+			if (err.isError()) throw new RESTClientException(err.getErrorMessage(), err.getErrorCode());
+
+			return new JSONArray(responseBody);
 		} catch (JSONException jsonExcept) {
 			throw new RESTClientException(jsonExcept.getMessage(), RESTClientException.ErrorCode.JSON_PARSING);
 		}
@@ -451,14 +503,8 @@ public abstract class ABaseRESTClient implements AutoCloseable {
 
 		try {
 			JSONObject jsonOjb = new JSONObject(responseBody);
-			if (jsonOjb.isNull(Error.JSONMapping.ERROR_CODE)) return jsonOjb;
-
-			int errorCode = jsonOjb.getInt(Error.JSONMapping.ERROR_CODE);
-			if (errorCode > 0) {
-				String errorMessage = (jsonOjb.isNull(Error.JSONMapping.ERROR_DESC)
-						? "Not set": jsonOjb.getString(Error.JSONMapping.ERROR_DESC));
-				throw new RESTClientException(errorMessage, errorCode);
-			}
+			Error err = new Error(jsonOjb);
+			if (err.isError()) throw new RESTClientException(err.getErrorMessage(), err.getErrorCode());
 
 			return jsonOjb;
 		} catch (JSONException jsonExcept) {
@@ -565,9 +611,7 @@ public abstract class ABaseRESTClient implements AutoCloseable {
 			ResponseHandler<String> responseHandler = this.getJsonResponseHandler(
 					this.endpointUrl.concat(postfixUrl));
 
-			responseBody = this.executeHttp(httpclient, uriRequest,
-					responseHandler, postfixUrl);
-
+			responseBody = this.executeHttp(httpclient, uriRequest, responseHandler, postfixUrl);
 			if (responseBody == null || responseBody.trim().isEmpty()) {
 				throw new RESTClientException(
 						"No response data from '"+
@@ -679,27 +723,6 @@ public abstract class ABaseRESTClient implements AutoCloseable {
 			e.printStackTrace();
 		}
 		return null;
-	}
-
-	/**
-	 * Inspects the {@code baseDomainParam} to confirm whether
-	 * the base domain is of type {@code Error}.
-	 *
-	 * @param baseDomainParam The domain object to inspect.
-	 * @return Whether the {@code baseDomainParam} is of type {@code Error} or error code is greater than 0.
-	 *
-	 * @see ABaseJSONObject
-	 * @see Error
-	 */
-	protected boolean isError(ABaseJSONObject baseDomainParam) {
-		if (baseDomainParam == null) return false;
-
-		//Must be subclass of error and error code greater than 0...
-		if (baseDomainParam instanceof Error && ((Error)baseDomainParam).getErrorCode() > 0) {
-			return true;
-		}
-
-		return false;
 	}
 
 	/**

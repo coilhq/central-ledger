@@ -6,9 +6,9 @@ export HEAP="-Xms3g -Xmx6g -XX:MaxMetaspaceSize=2024m"
 # export JAVA_HOME=""
 
 # First build to get the latest:
-#TODO mvn clean
-#TODO mvn clean install -U
-#TODO mvn clean install assembly:single
+mvn clean
+mvn clean install -U
+mvn clean install assembly:single
 
 # Copy the jar over:
 cp target/central-ledger-jmeter-jar-with-dependencies.jar $JMETER_HOME/lib

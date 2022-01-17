@@ -60,14 +60,18 @@ public class Error extends ABaseJSONObject {
 
 			//Error Code...
 			if (!errorInfo.isNull(JSONMapping.ERROR_CODE)) {
-				this.setErrorCode(Long.valueOf(errorInfo.getLong(JSONMapping.ERROR_CODE)).intValue());
+				this.setErrorCode(Long.valueOf(errorInfo.getString(JSONMapping.ERROR_CODE)).intValue());
 			}
 
 			//Error Description...
-			if (!this.JSONObject.isNull(JSONMapping.ERROR_DESC)) {
-				this.setErrorMessage(this.JSONObject.getString(JSONMapping.ERROR_DESC));
+			if (!errorInfo.isNull(JSONMapping.ERROR_DESC)) {
+				this.setErrorMessage(errorInfo.getString(JSONMapping.ERROR_DESC));
 			}
 		}
+	}
+
+	public boolean isError() {
+		return (this.getErrorCode() > 0);
 	}
 
 	/**
@@ -121,14 +125,12 @@ public class Error extends ABaseJSONObject {
 	public JSONObject toJsonObject() throws JSONException {
 
 		JSONObject returnVal = super.toJsonObject();
-
 		returnVal.put(JSONMapping.ERROR_CODE, this.getErrorCode());
 
 		//Error Message...
 		if (this.getErrorMessage() != null) {
 			returnVal.put(JSONMapping.ERROR_DESC,this.getErrorMessage());
 		}
-
 		return returnVal;
 	}
 }

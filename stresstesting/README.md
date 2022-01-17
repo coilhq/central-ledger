@@ -6,7 +6,18 @@ The `AbstractJavaSamplerClient` for Central Ledger needs to be added to the jMet
 
 ## Configure
 
+### Generate Test Data based of Plan Configuration:
+The following command will generate test data based on `CLPlanConfig.json`. Modify the plan configuration
+to suit the test scenarios.
 
+```shell
+gen_test_data stresstesting/test-plan/CLPlanConfig.json stresstesting/test-plan/InData.json
+```
+
+### Print the Test Data:
+```shell
+print_test_data stresstesting/test-plan/InData.json
+```
 
 ## Run
 

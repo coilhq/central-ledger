@@ -3,5 +3,5 @@
   "transfers" : 300,
   "rejections" : 20,
   "transfers-single-http-request" : true,
-  "transfers-currency" : "ZAR"
+  "transfers-currency" : "USD"
 }

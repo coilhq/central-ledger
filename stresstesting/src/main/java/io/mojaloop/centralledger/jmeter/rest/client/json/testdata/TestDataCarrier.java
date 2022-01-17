@@ -1,6 +1,7 @@
 package io.mojaloop.centralledger.jmeter.rest.client.json.testdata;
 
 import io.mojaloop.centralledger.jmeter.rest.client.json.ABaseJSONObject;
+import io.mojaloop.centralledger.jmeter.rest.client.json.transfer.Transfer;
 import lombok.Data;
 import lombok.Getter;
 import lombok.Setter;
@@ -20,6 +21,9 @@ public class TestDataCarrier extends ABaseJSONObject {
 		transfer_prepare,
 		transfer_fulfil,
 		transfer_reject,
+		transfer_prepare_fulfil,
+		transfer_lookup,
+		account_lookup
 	}
 
 
@@ -39,9 +43,16 @@ public class TestDataCarrier extends ABaseJSONObject {
 
 		if (jsonObject.has(JSONMapping.ACTION_TYPE)) {
 			this.setActionType(ActionType.valueOf(jsonObject.getString(JSONMapping.ACTION_TYPE)));
-
 			switch (this.getActionType()) {
-
+				case transfer_fulfil:
+				case transfer_prepare:
+				case transfer_prepare_fulfil:
+					if (!jsonObject.isNull(JSONMapping.REQUEST)) {
+						this.setRequest(new Transfer(jsonObject.getJSONObject(JSONMapping.REQUEST)));
+					}
+					if (!jsonObject.isNull(JSONMapping.RESPONSE)) {
+						this.setResponse(new Transfer(jsonObject.getJSONObject(JSONMapping.RESPONSE)));
+					}
 			}
 		}
 	}
@@ -53,6 +64,11 @@ public class TestDataCarrier extends ABaseJSONObject {
 		if (this.getActionType() == null) returnVal.put(JSONMapping.ACTION_TYPE, JSONObject.NULL);
 		else returnVal.put(JSONMapping.ACTION_TYPE, this.getActionType().name());
 
+		if (this.getRequest() == null) returnVal.put(JSONMapping.REQUEST, JSONObject.NULL);
+		else returnVal.put(JSONMapping.REQUEST, this.getRequest().toJsonObject());
+
+		if (this.getResponse() == null) returnVal.put(JSONMapping.RESPONSE, JSONObject.NULL);
+		else returnVal.put(JSONMapping.RESPONSE, this.getResponse().toJsonObject());
 
 		return returnVal;
 	}

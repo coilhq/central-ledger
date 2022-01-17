@@ -16,14 +16,19 @@ public class TestPlanConfig extends ABaseJSONObject {
 	private int maxAccounts;
 	private int transfers;
 	private int rejections;
+	private int transferLookups;
+	private int accountLookups;
 	private boolean transferSingleHttpRequest;
+	private String transfersCurrency;
 
 	public static class JSONMapping {
 		public static final String MAX_ACCOUNTS = "max-accounts";
-		public static final String transfers = "transfers";
-		public static final String rejections = "rejections";
-		public static final String transfers_single_http_request = "transfers-single-http-request";
+		public static final String TRANSFERS = "transfers";
+		public static final String REJECTIONS = "rejections";
+		public static final String TRANSFERS_SINGLE_HTTP_REQUEST = "transfers-single-http-request";
 		public static final String TRANSFERS_CURRENCY = "transfers-currency";
+		public static final String TRANSFER_LOOKUPS = "transfer-lookups";
+		public static final String ACCOUNT_LOOKUPS = "account-lookups";
 	}
 
 	/**
@@ -35,6 +40,7 @@ public class TestPlanConfig extends ABaseJSONObject {
 		super(jsonObject);
 
 		if (jsonObject.has(JSONMapping.MAX_ACCOUNTS)) this.setMaxAccounts(jsonObject.getInt(JSONMapping.MAX_ACCOUNTS));
+		if (jsonObject.has(JSONMapping.TRANSFERS_CURRENCY)) this.setTransfersCurrency(jsonObject.getString(JSONMapping.TRANSFERS_CURRENCY));
 	}
 
 	@Override
@@ -42,6 +48,9 @@ public class TestPlanConfig extends ABaseJSONObject {
 		JSONObject returnVal = super.toJsonObject();
 
 		returnVal.put(JSONMapping.MAX_ACCOUNTS, this.getMaxAccounts());
+		returnVal.put(JSONMapping.TRANSFERS_CURRENCY, this.getTransfersCurrency());
+		returnVal.put(JSONMapping.TRANSFER_LOOKUPS, this.getTransferLookups());
+		returnVal.put(JSONMapping.ACCOUNT_LOOKUPS, this.getAccountLookups());
 
 		return returnVal;
 	}
