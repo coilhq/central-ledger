@@ -1,6 +1,7 @@
 package io.mojaloop.centralledger.jmeter.rest.client.json.testdata;
 
 import io.mojaloop.centralledger.jmeter.rest.client.json.ABaseJSONObject;
+import io.mojaloop.centralledger.jmeter.rest.client.json.participant.Participant;
 import io.mojaloop.centralledger.jmeter.rest.client.json.transfer.Transfer;
 import lombok.Data;
 import lombok.Getter;
@@ -26,7 +27,6 @@ public class TestDataCarrier extends ABaseJSONObject {
 		account_lookup
 	}
 
-
 	public static class JSONMapping {
 		public static final String REQUEST = "request";
 		public static final String RESPONSE = "response";
@@ -47,12 +47,23 @@ public class TestDataCarrier extends ABaseJSONObject {
 				case transfer_fulfil:
 				case transfer_prepare:
 				case transfer_prepare_fulfil:
+				case transfer_lookup:
 					if (!jsonObject.isNull(JSONMapping.REQUEST)) {
 						this.setRequest(new Transfer(jsonObject.getJSONObject(JSONMapping.REQUEST)));
 					}
 					if (!jsonObject.isNull(JSONMapping.RESPONSE)) {
 						this.setResponse(new Transfer(jsonObject.getJSONObject(JSONMapping.RESPONSE)));
 					}
+				break;
+				case create_participant:
+				case account_lookup:
+					if (!jsonObject.isNull(JSONMapping.REQUEST)) {
+						this.setRequest(new Participant(jsonObject.getJSONObject(JSONMapping.REQUEST)));
+					}
+					if (!jsonObject.isNull(JSONMapping.RESPONSE)) {
+						this.setResponse(new Participant(jsonObject.getJSONObject(JSONMapping.RESPONSE)));
+					}
+				break;
 			}
 		}
 	}

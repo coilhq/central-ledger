@@ -70,10 +70,16 @@ public class SamplerRunner {
 			TestDataCarrier.ActionType actionType = testData.getActionType();
 			switch (actionType) {
 				case create_participant:
-					result.setRequestHeaders(this.createHeaderVal("participant", testDataIndex));
+					result.setRequestHeaders(this.createHeaderVal(actionType, "/jmeter/participants/create", testDataIndex));
 					result.sampleStart();
-					responseJSON = this.dfspClient.createParticipant((Participant) testData.getRequest());
+					Participant participant = (Participant) testData.getRequest();
+					responseJSON = this.dfspClient.jMeterCreateParticipant(participant);
 					result.sampleEnd();
+
+
+					Participant createdExistingPart = (Participant)responseJSON;
+					result.setSampleLabel(String.format("%s:[%s]", result.getSampleLabel(),
+							createdExistingPart.isNewlyCreated() ? "newly-created": "existing"));
 				break;
 				case transfer_prepare_fulfil:
 				case transfer_prepare:
@@ -84,7 +90,7 @@ public class SamplerRunner {
 					//this.validateAndCorrectTransfer(transfer);
 
 					contentToSend = transfer.toJsonObject().toString();
-					result.setRequestHeaders(this.createHeaderVal("/jmeter/transfers/prepare", testDataIndex));
+					result.setRequestHeaders(this.createHeaderVal(actionType, "/jmeter/transfers/", testDataIndex));
 					result.sampleStart();
 					responseJSON = this.dfspClient.jMeterTransferPrepare(transfer);
 					result.sampleEnd();
@@ -104,7 +110,7 @@ public class SamplerRunner {
 
 				break;
 				case transfer_lookup:
-					result.setRequestHeaders(this.createHeaderVal("/jmeter/participants/{name}/transfers/{id}", testDataIndex));
+					result.setRequestHeaders(this.createHeaderVal(actionType, "/jmeter/participants/{name}/transfers/{id}", testDataIndex));
 					if (VALID_PREPARES.isEmpty()) {
 						logger.error("Please check test data. Expected a valid transfer!");
 						responseData = "No valid cached prepare.";
@@ -159,10 +165,12 @@ public class SamplerRunner {
 	}
 
 	private String createHeaderVal(
+			TestDataCarrier.ActionType actionType,
 			String urlPostfix,
 			int dataRowIndex
 	) {
-		return String.format("URL: %s\nTest Data Index: %d", urlPostfix, dataRowIndex);
+		return String.format("Action-Type: %s\nURL: %s\nTest Data Index: %d",
+				actionType, urlPostfix, dataRowIndex);
 	}
 
 	private void addValidPrepareToQueue(ValidPrepare prepare) {

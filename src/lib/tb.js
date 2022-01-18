@@ -66,6 +66,8 @@ const tbCreateAccount = async (id, accountType = 1, currencyTxt = 'USD') => {
     const client = await getTBClient()
     if (client == null) return {}
 
+    //console.trace('Creating the account' + 'BOOM -> '+id +' - '+accountType+' - '+currencyTxt)
+
     const userData = BigInt(id)
     const currencyU16 = obtainUnitFromCurrency(currencyTxt)
     const tbId = tbIdFrom(userData, currencyU16, accountType)
@@ -126,11 +128,10 @@ const tbLookupTransfer = async (id) => {
     const client = await getTBClient()
     if (client == null) return {}
 
-    const tbId = BigInt(id)
+    const tranId = uuidToBigInt(id)
 
-    Logger.info('Fetching Transfer '+tbId)
-
-    const transfers = await client.lookupTransfers(tbId)
+    Logger.info('Fetching Transfer '+tranId)
+    const transfers = await client.lookupTransfers(tranId)
     Logger.error('TransferLookup: '+util.inspect(transfers))
     if (transfers.length > 0) return transfers[0]
     return {}

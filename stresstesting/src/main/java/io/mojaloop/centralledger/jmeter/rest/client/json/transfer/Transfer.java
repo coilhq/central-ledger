@@ -62,8 +62,12 @@ public class Transfer extends ABaseJSONObject {
 
 		if (jsonObject.has(JSONMapping.TRANSFER_ID)) this.setTransferId(jsonObject.getString(JSONMapping.TRANSFER_ID));
 		if (jsonObject.has(JSONMapping.FULFIL)) this.setFulfil(jsonObject.getBoolean(JSONMapping.FULFIL));
-		if (jsonObject.has(JSONMapping.PAYER_FSP)) this.setPayerFsp(jsonObject.getString(JSONMapping.PAYER_FSP));
-		if (jsonObject.has(JSONMapping.PAYEE_FSP)) this.setPayeeFsp(jsonObject.getString(JSONMapping.PAYEE_FSP));
+		if (jsonObject.has(JSONMapping.PAYER_FSP) && !jsonObject.isNull(JSONMapping.PAYER_FSP)) {
+			this.setPayerFsp(jsonObject.getString(JSONMapping.PAYER_FSP));
+		}
+		if (jsonObject.has(JSONMapping.PAYEE_FSP) && !jsonObject.isNull(JSONMapping.PAYEE_FSP)) {
+			this.setPayeeFsp(jsonObject.getString(JSONMapping.PAYEE_FSP));
+		}
 		if (jsonObject.has(JSONMapping.AMOUNT)) this.setAmount(new Amount(jsonObject.getJSONObject(JSONMapping.AMOUNT)));
 		if (jsonObject.has(JSONMapping.ILP_PACKET)) this.setIlpPacket(jsonObject.getString(JSONMapping.ILP_PACKET));
 		if (jsonObject.has(JSONMapping.CONDITION)) this.setCondition(jsonObject.getString(JSONMapping.CONDITION));

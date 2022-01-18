@@ -17,6 +17,7 @@ import java.net.URL;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 /**
  *
@@ -63,7 +64,12 @@ public class StressTestMappingSampler extends AbstractJavaSamplerClient {
 		this.dfspClient = new DFSPClient(this.url);
 
 		this.logger.info("Fetching all participants from CL.");
-		//TODO this.allParticipants = this.dfspClient.getAllParticipants();
+		this.allParticipants = TestDataUtil.filterForType(
+				this.allTestData,
+				TestDataCarrier.ActionType.create_participant
+		).stream()
+				.map(itm -> (Participant) itm.getRequest())
+				.collect(Collectors.toList());
 
 		//Populate the form containers...
 		this.logger.info("Initiation of test data for [{}] COMPLETE.", this.url);
@@ -80,6 +86,8 @@ public class StressTestMappingSampler extends AbstractJavaSamplerClient {
 	@Override
 	public SampleResult runTest(JavaSamplerContext javaSamplerContext) {
 		SampleResult returnVal = new SampleResult();
+		if (this.allTestData == null) return returnVal;
+
 		TestDataCarrier testData = this.allTestData.get(this.counter);
 		returnVal.setSentBytes(testData.toString().getBytes().length);
 

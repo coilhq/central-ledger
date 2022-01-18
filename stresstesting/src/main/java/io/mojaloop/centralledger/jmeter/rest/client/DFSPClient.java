@@ -37,11 +37,8 @@ public class DFSPClient extends ABaseRESTClient {
 		return returnVal;
 	}
 
-	/**
-	 * @see Participant
-	 */
-	public Participant createParticipant(Participant toCreate) {
-		return new Participant(this.postJson(toCreate, "/participants"));
+	public Participant jMeterCreateParticipant(Participant toCreate) {
+		return new Participant(this.postJson(toCreate, "/jmeter/participants/create"));
 	}
 
 	/**

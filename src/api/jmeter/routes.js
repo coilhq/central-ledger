@@ -64,14 +64,34 @@ module.exports = [
   },
   {
     method: 'POST',
+    path: '/jmeter/participants/create',
+    handler: Handler.createParticipantAccounts,
+    options: {
+      tags,
+      description: '[jMeter] API used for creating participant accounts.',
+      payload: {
+        allow: ['application/json'],
+        failAction: 'error'
+      },
+      validate: {
+        payload: Joi.object({
+          name: Joi.string().required().description('Name is required'),
+          currency: currencyValidator,
+          newlyCreated: Joi.boolean().required().description('is this a newly created participant.'),
+        }),
+      }
+    }
+  },
+  {
+    method: 'POST',
     path: '/jmeter/transfers/prepare',
     handler: Handler.prepareTransfer,
     options: {
       tags,
       description: '[jMeter] API used for preparing a 2-phase transfer (optional fulfill may be provided).',
       payload: {
-        allow: ['application/json']//,
-        //failAction: 'error'
+        allow: ['application/json'],
+        failAction: 'error'
       },
       validate: {
         payload: Joi.object({

@@ -28,8 +28,43 @@ const Transaction = require('../../domain/transactions')
 const Transfer = require('../../domain/transfer')
 const ErrorHandler = require('@mojaloop/central-services-error-handling')
 const Logger = require('@mojaloop/central-services-logger')
+const Model = require("../../domain/participant");
+const ParticipantCurrencyModel = require("../../models/participant/participantCurrencyCached");
+const ParticipantService = require("../../domain/participant");
+const {saveTransferDuplicateCheck} = require("../../models/transfer/transferDuplicateCheck");
+const Config = require("../../lib/config");
 const Enum = require('@mojaloop/central-services-shared').Enum
 const TransferEventAction = Enum.Events.Event.Action
+const Crypto = require('crypto')
+
+const testParticipant = {
+  name: 'fsp',
+  currency: 'USD',
+  isDisabled: 0,
+  createdDate: new Date()
+}
+
+const createParticipantAccounts = async function (request, h) {
+  try {
+    const body = request.payload
+    const getByNameResult = await ParticipantService.getByName(body.name)
+    if (!!getByNameResult) {
+      return {name : body.name, currency: body.currency, newlyCreated: false}
+    }
+
+    const participantId = await Model.create(body)
+    const currencyId = body.currency
+    const participantCurrencyId = await ParticipantCurrencyModel.create(participantId, currencyId, Enum.Accounts.LedgerAccountType.POSITION, true)
+    const participantCurrencyId2 = await ParticipantCurrencyModel.create(participantId, currencyId, Enum.Accounts.LedgerAccountType.SETTLEMENT, true)
+    const participant = await Model.getById(participantId)
+    return {name : body.name, currency: body.currency, newlyCreated: true}
+  } catch (err) {
+    console.log("ERROR!!!! : ")
+    console.log(err)
+    Logger.isErrorEnabled && Logger.error(err)
+    throw ErrorHandler.Factory.reformatFSPIOPError(err)
+  }
+}
 
 const getIlpTransactionById = async function (request) {
   try {
@@ -66,13 +101,13 @@ const getTransferById = async function (request) {
       const returnVal = {
         'transferId' : entity[0].transferId,
         'amount' : {
-          'currency' : entity[0].currency,
           'amount' : entity[0].amount
         }
       }
       return returnVal
     }
-    throw ErrorHandler.Factory.createFSPIOPError(ErrorHandler.Enums.FSPIOPErrorCodes.ID_NOT_FOUND, 'The requested resource could not be found.')
+    throw ErrorHandler.Factory.createFSPIOPError(ErrorHandler.Enums.FSPIOPErrorCodes.ID_NOT_FOUND,
+      'The requested resource '+request.params.id+' for '+request.params.name+' could not be found.')
   } catch (err) {
     console.error(err)
     Logger.isErrorEnabled && Logger.error(err)
@@ -83,12 +118,22 @@ const getTransferById = async function (request) {
 const prepareTransfer = async function (request, h) {
   try {
     const body = request.payload
+
+    if (!Config.TIGERBEETLE.enabled) {
+      const hashSha256 = Crypto.createHash('sha256')
+      let hash = JSON.stringify(body)
+      hash = hashSha256.update(hash)
+      hash = hashSha256.digest(hash).toString('base64').slice(0, -1) // removing the trailing '=' as per the specification
+      const transferId = body.transferId;
+      saveTransferDuplicateCheck(transferId, hash)
+    }
+
     await Transfer.prepare(body, null, true)
 
     if (body.fulfil) {
       return await fulfilTransfer(request)
     }
-    return body
+    return {transferId : body.transferId}
   } catch (err) {
     console.log("ERROR!!!! : ")
     console.log(err)
@@ -113,6 +158,7 @@ const fulfilTransfer = async function (request) {
 }
 
 module.exports = {
+  createParticipantAccounts,
   getIlpTransactionById,
   getTransferById,
   prepareTransfer,

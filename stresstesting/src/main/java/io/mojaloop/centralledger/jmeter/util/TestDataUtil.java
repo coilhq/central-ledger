@@ -1,6 +1,5 @@
 package io.mojaloop.centralledger.jmeter.util;
 
-import io.mojaloop.centralledger.jmeter.rest.client.json.ABaseJSONObject;
 import io.mojaloop.centralledger.jmeter.rest.client.json.participant.Participant;
 import io.mojaloop.centralledger.jmeter.rest.client.json.testdata.TestDataCarrier;
 import io.mojaloop.centralledger.jmeter.rest.client.json.testdata.TestPlanConfig;
@@ -12,6 +11,7 @@ import org.json.JSONObject;
 import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -96,39 +96,65 @@ public class TestDataUtil {
 	private static List<TestDataCarrier> genTestDataFrom(TestPlanConfig testPlanConfig) {
 		List<TestDataCarrier> returnVal = new ArrayList<>();
 
-		TestDataCarrier toAddPayer = new TestDataCarrier(new JSONObject());
-		toAddPayer.setActionType(TestDataCarrier.ActionType.create_participant);//TODO
-		Participant participantPayer = new Participant(new JSONObject());
-		participantPayer.setActive(true);
-		participantPayer.setCurrency(testPlanConfig.getTransfersCurrency());
-		toAddPayer.setRequest(participantPayer);
+		List<Participant> participants = new ArrayList<>();
+		for (int index = 0; index < testPlanConfig.getParticipantAccounts(); index++) {
+			TestDataCarrier toAddParticipant = new TestDataCarrier(new JSONObject());
+			toAddParticipant.setActionType(TestDataCarrier.ActionType.create_participant);
 
+			Participant participant = new Participant(new JSONObject());
+			String name = String.format("fspJM%s", UUID.randomUUID().toString().replace("-",""))
+					.substring(0, 30);
+			participant.setName(name);
+			participant.setCurrency(testPlanConfig.getTransfersCurrency());
+			toAddParticipant.setRequest(participant);
+			returnVal.add(toAddParticipant);
+			participants.add(participant);
+		}
 
-		TestDataCarrier toAdd = new TestDataCarrier(new JSONObject());
-		toAdd.setActionType(TestDataCarrier.ActionType.transfer_prepare);//TODO
+		for (int index = 0; index < testPlanConfig.getTransfers(); index++) {
+			TestDataCarrier toAdd = new TestDataCarrier(new JSONObject());
 
-		ABaseJSONObject req = null;
+			if (testPlanConfig.isTransferSingleHttpRequest()) {
+				toAdd.setActionType(TestDataCarrier.ActionType.transfer_prepare_fulfil);
+			} else {
+				toAdd.setActionType(TestDataCarrier.ActionType.transfer_prepare);
+			}
 
-		Transfer transfer = new Transfer(new JSONObject());//TODO
-		transfer.setTransferId(UUID.randomUUID().toString());
-		transfer.setFulfil(true);
-		transfer.setPayerFsp("payerFsp55863996");
-		transfer.setPayeeFsp("payeeFsp55864046");
-		transfer.setCondition("GRzLaTP7DJ9t4P-a_BA0WA9wzzlsugf00-Tn6kESAfM");
-		Amount transAmount = new Amount(new JSONObject());
-		transAmount.setAmount(10L);
-		transAmount.setCurrency(testPlanConfig.getTransfersCurrency());
-		transfer.setAmount(transAmount);
-		transfer.setIlpPacket("AYIBgQAAAAAAAASwNGxldmVsb25lLmRmc3AxLm1lci45T2RTOF81MDdqUUZERmZlakgyOVc4bXFmNEpLMHlGTFGCAUBQU0svMS4wCk5vbmNlOiB1SXlweUYzY3pYSXBFdzVVc05TYWh3CkVuY3J5cHRpb246IG5vbmUKUGF5bWVudC1JZDogMTMyMzZhM2ItOGZhOC00MTYzLTg0NDctNGMzZWQzZGE5OGE3CgpDb250ZW50LUxlbmd0aDogMTM1CkNvbnRlbnQtVHlwZTogYXBwbGljYXRpb24vanNvbgpTZW5kZXItSWRlbnRpZmllcjogOTI4MDYzOTEKCiJ7XCJmZWVcIjowLFwidHJhbnNmZXJDb2RlXCI6XCJpbnZvaWNlXCIsXCJkZWJpdE5hbWVcIjpcImFsaWNlIGNvb3BlclwiLFwiY3JlZGl0TmFtZVwiOlwibWVyIGNoYW50XCIsXCJkZWJpdElkZW50aWZpZXJcIjpcIjkyODA2MzkxXCJ9IgA");
+			Transfer transfer = new Transfer(new JSONObject());
+			transfer.setTransferId(UUID.randomUUID().toString());
+			transfer.setFulfil(testPlanConfig.isTransferSingleHttpRequest());
 
-		req = transfer;
+			Random random = new Random();
+			int payerIndex = -1, payeeIndex = -1;
+			do {
+				payerIndex = random.nextInt(testPlanConfig.getParticipantAccounts());
+				payeeIndex = random.nextInt(testPlanConfig.getParticipantAccounts());
+			} while (payeeIndex == payerIndex);
 
-		toAdd.setRequest(req);
+			//transfer.setPayerFsp("payerFsp55863996");
+			transfer.setPayerFsp(participants.get(payerIndex).getName());
+			//transfer.setPayeeFsp("payeeFsp55864046");
+			transfer.setPayeeFsp(participants.get(payeeIndex).getName());
+			transfer.setCondition("GRzLaTP7DJ9t4P-a_BA0WA9wzzlsugf00-Tn6kESAfM");
+			Amount transAmount = new Amount(new JSONObject());
+
+			long transactionAmount = 0;
+			do {
+				transactionAmount = Long.valueOf(random.nextInt(200));
+			} while (transactionAmount < 1);
+
+			transAmount.setAmount(transactionAmount);
+			transAmount.setCurrency(testPlanConfig.getTransfersCurrency());
+			transfer.setAmount(transAmount);
+			transfer.setIlpPacket("AYIBgQAAAAAAAASwNGxldmVsb25lLmRmc3AxLm1lci45T2RTOF81MDdqUUZERmZlakgyOVc4bXFmNEpLMHlGTFGCAUBQU0svMS4wCk5vbmNlOiB1SXlweUYzY3pYSXBFdzVVc05TYWh3CkVuY3J5cHRpb246IG5vbmUKUGF5bWVudC1JZDogMTMyMzZhM2ItOGZhOC00MTYzLTg0NDctNGMzZWQzZGE5OGE3CgpDb250ZW50LUxlbmd0aDogMTM1CkNvbnRlbnQtVHlwZTogYXBwbGljYXRpb24vanNvbgpTZW5kZXItSWRlbnRpZmllcjogOTI4MDYzOTEKCiJ7XCJmZWVcIjowLFwidHJhbnNmZXJDb2RlXCI6XCJpbnZvaWNlXCIsXCJkZWJpdE5hbWVcIjpcImFsaWNlIGNvb3BlclwiLFwiY3JlZGl0TmFtZVwiOlwibWVyIGNoYW50XCIsXCJkZWJpdElkZW50aWZpZXJcIjpcIjkyODA2MzkxXCJ9IgA");
+
+			toAdd.setRequest(transfer);
+			returnVal.add(toAdd);
+		}
 
 		TestDataCarrier lookup = new TestDataCarrier(new JSONObject());
 		lookup.setActionType(TestDataCarrier.ActionType.transfer_lookup);
 
-		returnVal.add(toAdd);
 		returnVal.add(lookup);
 		return returnVal;
 	}

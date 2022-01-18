@@ -24,6 +24,7 @@ public class Participant extends ABaseJSONObject {
 	private String id;
 	private Date created;
 	private boolean isActive;
+	private boolean newlyCreated;
 	private List<String> links;
 	private List<Account> accounts;
 
@@ -39,18 +40,25 @@ public class Participant extends ABaseJSONObject {
 		public static final String ACCOUNTS = "accounts";
 		public static final String LEDGER = "ledger";
 		public static final String CREATED = "created";
+		public static final String NEWLY_CREATED = "newlyCreated";
 	}
 
-	/**
-	 * Populates local variables with {@code jsonObjectParam}.
-	 *
-	 * @param jsonObject The JSON Object.
-	 */
 	public Participant(JSONObject jsonObject) {
 		super(jsonObject);
 
-		if (jsonObject.has(JSONMapping.ID)) this.setId(jsonObject.getString(JSONMapping.ID));
-		if (jsonObject.has(JSONMapping.NAME)) this.setId(jsonObject.getString(JSONMapping.NAME));
+		if (jsonObject.has(JSONMapping.ID)) {
+			Object obj = jsonObject.get(JSONMapping.ID);
+			if (obj instanceof Number) {
+				this.setId(Long.toString(((Number)obj).longValue()));
+			} else {
+				this.setId(obj.toString());
+			}
+		}
+
+		if (jsonObject.has(JSONMapping.NAME)) this.setName(jsonObject.getString(JSONMapping.NAME));
+		if (jsonObject.has(JSONMapping.CURRENCY)) this.setCurrency(jsonObject.getString(JSONMapping.CURRENCY));
+		if (jsonObject.has(JSONMapping.NEWLY_CREATED)) this.setNewlyCreated(jsonObject.getBoolean(JSONMapping.NEWLY_CREATED));
+
 		if (jsonObject.has(JSONMapping.CREATED)) {
 			this.setCreated(this.dateFrom(jsonObject, JSONMapping.CREATED));
 		}
@@ -76,18 +84,20 @@ public class Participant extends ABaseJSONObject {
 		}
 	}
 
-	/**
-	 *
-	 * @return
-	 * @throws JSONException
-	 */
 	@Override
 	public JSONObject toJsonObject() throws JSONException {
 		JSONObject returnVal = super.toJsonObject();
 
-		//ID...
-		if (this.getId() == null) returnVal.put(JSONMapping.ID, JSONObject.NULL);
-		else returnVal.put(JSONMapping.ID, this.getId());
+		//if (this.getId() == null) returnVal.put(JSONMapping.ID, JSONObject.NULL);
+		//else returnVal.put(JSONMapping.ID, this.getId());
+
+		if (this.getName() == null) returnVal.put(JSONMapping.NAME, JSONObject.NULL);
+		else returnVal.put(JSONMapping.NAME, this.getName());
+
+		if (this.getCurrency() == null) returnVal.put(JSONMapping.CURRENCY, JSONObject.NULL);
+		else returnVal.put(JSONMapping.CURRENCY, this.getCurrency());
+
+		returnVal.put(JSONMapping.NEWLY_CREATED, this.isNewlyCreated());
 
 		return returnVal;
 	}

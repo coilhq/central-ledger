@@ -522,7 +522,7 @@ const saveTransferPrepared = async (payload, stateReason = null, hasPassedValida
             await trx.commit()
             logHistogram && histTimerSaveTranferTransactionValidationPassedEnd({ success: true, queryName: 'facade_saveTransferPrepared_transaction' })
           } catch (errDB) {
-            console.log(errDB)
+            console.trace(errDB)
             await trx.rollback()
             logHistogram && histTimerSaveTranferTransactionValidationPassedEnd({ success: false, queryName: 'facade_saveTransferPrepared_transaction' })
             throw errDB
@@ -1216,6 +1216,16 @@ const reconciliationTransferAbort = async function (payload, transactionTimestam
 
 const getTransferParticipant = async (participantName, transferId) => {
   try {
+    if (false && Config.TIGERBEETLE.enabled) {
+      const tbLookup = await Tb.tbLookupTransfer(transferId)
+      return [{
+        'transferId' : transferId,
+        'amount' : {
+          'amount' : tbLookup.amount
+        }
+      }]
+    }
+
     return Db.from('participant').query(async (builder) => {
       return builder
         .where({
@@ -1231,6 +1241,7 @@ const getTransferParticipant = async (participantName, transferId) => {
         )
     })
   } catch (err) {
+    console.trace('ERROR with TF lookup!')
     throw ErrorHandler.Factory.reformatFSPIOPError(err)
   }
 }
