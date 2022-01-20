@@ -111,6 +111,7 @@ public class TestDataUtil {
 			participants.add(participant);
 		}
 
+		int transferLookupsCreated = 0;
 		for (int index = 0; index < testPlanConfig.getTransfers(); index++) {
 			TestDataCarrier toAdd = new TestDataCarrier(new JSONObject());
 
@@ -150,12 +151,25 @@ public class TestDataUtil {
 
 			toAdd.setRequest(transfer);
 			returnVal.add(toAdd);
+
+			if (index > 5 && (transferLookupsCreated < testPlanConfig.getTransferLookups())) {
+				boolean addLookup = new Random().nextInt(2) > 0;
+				if (addLookup) {
+					TestDataCarrier lookup = new TestDataCarrier(new JSONObject());
+					lookup.setActionType(TestDataCarrier.ActionType.transfer_lookup);
+					returnVal.add(lookup);
+					transferLookupsCreated++;
+				}
+			}
 		}
 
-		TestDataCarrier lookup = new TestDataCarrier(new JSONObject());
-		lookup.setActionType(TestDataCarrier.ActionType.transfer_lookup);
+		while (transferLookupsCreated < testPlanConfig.getTransferLookups()) {
+			TestDataCarrier lookup = new TestDataCarrier(new JSONObject());
+			lookup.setActionType(TestDataCarrier.ActionType.transfer_lookup);
+			returnVal.add(lookup);
+			transferLookupsCreated++;
+		}
 
-		returnVal.add(lookup);
 		return returnVal;
 	}
 }

@@ -37,6 +37,7 @@ public class TestPlanConfig extends ABaseJSONObject {
 		if (jsonObject.has(JSONMapping.PARTICIPANT_ACCOUNTS)) this.setParticipantAccounts(jsonObject.getInt(JSONMapping.PARTICIPANT_ACCOUNTS));
 		if (jsonObject.has(JSONMapping.TRANSFERS)) this.setTransfers(jsonObject.getInt(JSONMapping.TRANSFERS));
 		if (jsonObject.has(JSONMapping.ACCOUNT_LOOKUPS)) this.setAccountLookups(jsonObject.getInt(JSONMapping.ACCOUNT_LOOKUPS));
+		if (jsonObject.has(JSONMapping.TRANSFER_LOOKUPS)) this.setTransferLookups(jsonObject.getInt(JSONMapping.TRANSFER_LOOKUPS));
 		if (jsonObject.has(JSONMapping.TRANSFERS_CURRENCY)) this.setTransfersCurrency(jsonObject.getString(JSONMapping.TRANSFERS_CURRENCY));
 		if (jsonObject.has(JSONMapping.TRANSFERS_SINGLE_HTTP_REQUEST)) this.setTransferSingleHttpRequest(
 				jsonObject.getBoolean(JSONMapping.TRANSFERS_SINGLE_HTTP_REQUEST));

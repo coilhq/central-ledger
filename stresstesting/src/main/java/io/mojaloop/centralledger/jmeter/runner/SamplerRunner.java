@@ -117,8 +117,8 @@ public class SamplerRunner {
 					} else {
 						ValidPrepare validPrepare = VALID_PREPARES.poll();
 
-						while (System.currentTimeMillis() < (validPrepare.getAddedAt() + TimeUnit.SECONDS.toMillis(3))) {
-							Thread.sleep(500);
+						while (System.currentTimeMillis() < (validPrepare.getAddedAt() + TimeUnit.SECONDS.toMillis(2))) {
+							Thread.sleep(100);
 						}
 
 						contentToSend = validPrepare.toString();

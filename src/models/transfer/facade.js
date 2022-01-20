@@ -1216,12 +1216,12 @@ const reconciliationTransferAbort = async function (payload, transactionTimestam
 
 const getTransferParticipant = async (participantName, transferId) => {
   try {
-    if (false && Config.TIGERBEETLE.enabled) {
+    if (Config.TIGERBEETLE.enabled) {
       const tbLookup = await Tb.tbLookupTransfer(transferId)
       return [{
         'transferId' : transferId,
         'amount' : {
-          'amount' : tbLookup.amount
+          'amount' : Number(tbLookup.amount)
         }
       }]
     }
@@ -1241,7 +1241,8 @@ const getTransferParticipant = async (participantName, transferId) => {
         )
     })
   } catch (err) {
-    console.trace('ERROR with TF lookup!')
+    console.error('ERROR with Transfer lookup!')
+    console.error(err)
     throw ErrorHandler.Factory.reformatFSPIOPError(err)
   }
 }

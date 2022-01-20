@@ -69,3 +69,6 @@ tb/cluster_*.tigerbeetle
 
 # Mojaloop Central Ledger Stress Test
 stresstesting/target
+
+# jMeter
+stresstesting/jMeterOut

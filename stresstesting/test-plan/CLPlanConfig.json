@@ -1,8 +1,9 @@
 {
-  "participant-accounts" : 5,
-  "transfers" : 300,
-  "rejections" : 20,
-  "account-lookups" : 20,
+  "participant-accounts" : 20,
+  "account-lookups" : 5,
+  "transfers" : 10000,
+  "rejections" : 3,
+  "transfer-lookups" : 0,
   "transfers-single-http-request" : false,
   "transfers-amount-max" : 200,
   "transfers-currency" : "USD"

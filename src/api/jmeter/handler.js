@@ -101,7 +101,7 @@ const getTransferById = async function (request) {
       const returnVal = {
         'transferId' : entity[0].transferId,
         'amount' : {
-          'amount' : entity[0].amount
+          'amount' : entity[0].amount.amount
         }
       }
       return returnVal

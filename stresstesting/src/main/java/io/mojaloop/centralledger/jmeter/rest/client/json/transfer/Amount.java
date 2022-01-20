@@ -30,7 +30,9 @@ public class Amount extends ABaseJSONObject {
 		super(jsonObject);
 
 		if (jsonObject.has(JSONMapping.CURRENCY)) this.setCurrency(jsonObject.getString(JSONMapping.CURRENCY));
-		if (jsonObject.has(JSONMapping.AMOUNT)) this.setAmount(jsonObject.getLong(JSONMapping.AMOUNT));
+		if (jsonObject.has(JSONMapping.AMOUNT) && !jsonObject.isNull(JSONMapping.AMOUNT)) {
+			this.setAmount(jsonObject.getNumber(JSONMapping.AMOUNT).longValue());
+		}
 	}
 
 	@Override

@@ -34,6 +34,9 @@ const crypto = require("crypto");
 
 let tbCachedClient
 
+let inFlight = [];
+let lastWriteSecond = 0, lastWriteMinute = 0;
+
 const secret = 'This is a secret 🤫'
 
 const getTBClient = async () => {
@@ -112,10 +115,7 @@ const tbLookupAccount = async (id, accountType = 1, currencyTxt = 'USD') => {
     const currencyU16 = obtainUnitFromCurrency(currencyTxt)
     const tbId = tbIdFrom(userData, currencyU16, accountType)
 
-    Logger.info('Fetching Account '+tbId)
-
-    const accounts = await client.lookupAccounts(tbId)
-    Logger.error('AccLookup: '+util.inspect(accounts))
+    const accounts = await client.lookupAccounts([tbId])
     if (accounts.length > 0) return accounts[0]
     return {}
   } catch (err) {
@@ -129,10 +129,7 @@ const tbLookupTransfer = async (id) => {
     if (client == null) return {}
 
     const tranId = uuidToBigInt(id)
-
-    Logger.info('Fetching Transfer '+tranId)
-    const transfers = await client.lookupTransfers(tranId)
-    Logger.error('TransferLookup: '+util.inspect(transfers))
+    const transfers = await client.lookupTransfers([tranId])
     if (transfers.length > 0) return transfers[0]
     return {}
   } catch (err) {
@@ -236,17 +233,40 @@ const tbPrepareTransfer = async (
       timestamp: 0n, //u64, Reserved: This will be set by the server.
     }
 
-    const errors = await client.createTransfers([transfer])
-    //Logger.error('PrepareTransfer-Created: '+util.inspect(errors))
-    if (errors.length > 0) {
-      Logger.error('PrepareTransfer-ERROR: '+enumLabelFromCode(TbNode.CreateTransferError, errors[0].code))
+    inFlight.push(transfer)
+    const now = new Date()
+    if (inFlight.length > 5000 ||
+      (now.getSeconds() != lastWriteSecond && now.getMinutes() != lastWriteMinute)) {
+      //TODO [old] -> const errors = await client.createTransfers([transfer])
+      const errors = await client.createTransfers(inFlight)
 
-      const fspiopError = ErrorHandler.Factory.createFSPIOPError(ErrorHandler.Enums.FSPIOPErrorCodes.MODIFIED_REQUEST,
-        'TB-PrepareTransfer entry failed for [' + tranId + ':' +
-        enumLabelFromCode(TbNode.CreateTransferError, errors[0].code) + '] : '+ util.inspect(errors));
-      throw fspiopError
+      //Clear to accept new transfer batch...
+      inFlight = []
+      lastWriteSecond = now.getSeconds()
+      lastWriteMinute = now.getMinutes()
+
+      //Logger.error('PrepareTransfer-Created: '+util.inspect(errors))
+      if (errors.length > 0) {
+        let nonExistErr = true
+        for (let i = 0; i < errors.length; i++) {
+          if (errors[i].code != 2) {
+            nonExistErr = false
+            break
+          }
+        }
+
+        if (nonExistErr) return []//Already exists...
+
+        Logger.error('PrepareTransfer-ERROR: '+enumLabelFromCode(TbNode.CreateTransferError, errors[0].code))
+
+        const fspiopError = ErrorHandler.Factory.createFSPIOPError(ErrorHandler.Enums.FSPIOPErrorCodes.MODIFIED_REQUEST,
+          'TB-PrepareTransfer entry failed for [' + tranId + ':' +
+          enumLabelFromCode(TbNode.CreateTransferError, errors[0].code) + '] : '+ util.inspect(errors));
+        throw fspiopError
+      }
+      return errors
     }
-    return errors
+    return []//No errors
   } catch (err) {
     throw ErrorHandler.Factory.reformatFSPIOPError(err)
   }
