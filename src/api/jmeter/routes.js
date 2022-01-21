@@ -63,6 +63,20 @@ module.exports = [
     }
   },
   {
+    method: 'GET',
+    path: '/jmeter/participants/{name}',
+    handler: Handler.getTransferById,
+    options: {
+      tags,
+      description: '[jMeter] API used for retrieving a MJL participant accounts and balances by id.',
+      validate: {
+        params: Joi.object({
+          name: nameValidator
+        })
+      }
+    }
+  },
+  {
     method: 'POST',
     path: '/jmeter/participants/create',
     handler: Handler.createParticipantAccounts,

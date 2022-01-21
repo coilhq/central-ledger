@@ -201,11 +201,11 @@ const tbPrepareTransfer = async (
     const client = await getTBClient()
     if (client == null) return {}
 
-    Logger.info('1.1 Creating Transfer    '+util.inspect(transferRecord))
-    Logger.info('1.2 Payer                '+util.inspect(payerTransferParticipantRecord))
-    Logger.info('1.3 Payee                '+util.inspect(payeeTransferParticipantRecord))
-    Logger.info('1.4 Participants         '+util.inspect(participants))
-    Logger.info('1.5 Participant Currency '+util.inspect(participantCurrencyIds))
+    //Logger.info('1.1 Creating Transfer    '+util.inspect(transferRecord))
+    //Logger.info('1.2 Payer                '+util.inspect(payerTransferParticipantRecord))
+    //Logger.info('1.3 Payee                '+util.inspect(payeeTransferParticipantRecord))
+    //Logger.info('1.4 Participants         '+util.inspect(participants))
+    //Logger.info('1.5 Participant Currency '+util.inspect(participantCurrencyIds))
 
     const tranId = uuidToBigInt(transferRecord.transferId)
     const accountTypeNumeric = payerTransferParticipantRecord.ledgerEntryTypeId
@@ -217,8 +217,7 @@ const tbPrepareTransfer = async (
 
     const timeoutNanoseconds = BigInt(timeoutSeconds * 1000000000)
 
-    Logger.info('(tbPrepareTransfer) Making use of id '+
-      uuidToBigInt(transferRecord.transferId) +' [Payer-'+ payer + ':::Payee-'+payee+']')
+    //Logger.info('(tbPrepareTransfer) Making use of id '+ uuidToBigInt(transferRecord.transferId) +' [Payer-'+ payer + ':::Payee-'+payee+']')
 
     const transfer = {
       id: tranId, // u128
@@ -235,7 +234,7 @@ const tbPrepareTransfer = async (
 
     inFlight.push(transfer)
     const now = new Date()
-    if (inFlight.length > 5000 ||
+    if (inFlight.length > 700 ||
       (now.getSeconds() != lastWriteSecond && now.getMinutes() != lastWriteMinute)) {
       //TODO [old] -> const errors = await client.createTransfers([transfer])
       const errors = await client.createTransfers(inFlight)

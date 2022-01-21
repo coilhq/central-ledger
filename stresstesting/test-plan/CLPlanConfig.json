@@ -1,6 +1,6 @@
 {
-  "participant-accounts" : 20,
-  "account-lookups" : 5,
+  "participant-accounts" : 2,
+  "account-lookups" : 3000,
   "transfers" : 10000,
   "rejections" : 3,
   "transfer-lookups" : 0,
