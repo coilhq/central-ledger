@@ -217,8 +217,6 @@ const tbPrepareTransfer = async (
 
     const timeoutNanoseconds = BigInt(timeoutSeconds * 1000000000)
 
-    //Logger.info('(tbPrepareTransfer) Making use of id '+ uuidToBigInt(transferRecord.transferId) +' [Payer-'+ payer + ':::Payee-'+payee+']')
-
     const transfer = {
       id: tranId, // u128
       debit_account_id: payer,  // u128
@@ -232,40 +230,36 @@ const tbPrepareTransfer = async (
       timestamp: 0n, //u64, Reserved: This will be set by the server.
     }
 
-    inFlight.push(transfer)
-    const now = new Date()
-    if (inFlight.length > 700 ||
-      (now.getSeconds() != lastWriteSecond && now.getMinutes() != lastWriteMinute)) {
-      //TODO [old] -> const errors = await client.createTransfers([transfer])
-      const errors = await client.createTransfers(inFlight)
+    var errors = []
+    if (Config.TIGERBEETLE.enableBatching) {
+      inFlight.push(transfer)
 
-      //Clear to accept new transfer batch...
-      inFlight = []
-      lastWriteSecond = now.getSeconds()
-      lastWriteMinute = now.getMinutes()
-
-      //Logger.error('PrepareTransfer-Created: '+util.inspect(errors))
-      if (errors.length > 0) {
-        let nonExistErr = true
-        for (let i = 0; i < errors.length; i++) {
-          if (errors[i].code != 2) {
-            nonExistErr = false
-            break
-          }
-        }
-
-        if (nonExistErr) return []//Already exists...
-
-        Logger.error('PrepareTransfer-ERROR: '+enumLabelFromCode(TbNode.CreateTransferError, errors[0].code))
-
-        const fspiopError = ErrorHandler.Factory.createFSPIOPError(ErrorHandler.Enums.FSPIOPErrorCodes.MODIFIED_REQUEST,
-          'TB-PrepareTransfer entry failed for [' + tranId + ':' +
-          enumLabelFromCode(TbNode.CreateTransferError, errors[0].code) + '] : '+ util.inspect(errors));
-        throw fspiopError
+      if (inFlight.length > Config.TIGERBEETLE.batchMaxSize) {
+        errors = await client.createTransfers(inFlight)
+        inFlight = []
       }
-      return errors
+    } else {
+      errors = await client.createTransfers([transfer])
     }
-    return []//No errors
+
+    if (errors.length > 0) {
+      let nonExistErr = true
+      for (let i = 0; i < errors.length; i++) {
+        if (errors[i].code != 2) {
+          nonExistErr = false
+          break
+        }
+      }
+      if (nonExistErr) return []//Already exists...
+
+      Logger.error('PrepareTransfer-ERROR: '+enumLabelFromCode(TbNode.CreateTransferError, errors[0].code))
+
+      const fspiopError = ErrorHandler.Factory.createFSPIOPError(ErrorHandler.Enums.FSPIOPErrorCodes.MODIFIED_REQUEST,
+        'TB-PrepareTransfer entry failed for [' + tranId + ':' +
+        enumLabelFromCode(TbNode.CreateTransferError, errors[0].code) + '] : '+ util.inspect(errors));
+      throw fspiopError
+    }
+    return errors
   } catch (err) {
     throw ErrorHandler.Factory.reformatFSPIOPError(err)
   }

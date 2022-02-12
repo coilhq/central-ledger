@@ -125,7 +125,7 @@ const prepareTransfer = async function (request, h) {
       hash = hashSha256.update(hash)
       hash = hashSha256.digest(hash).toString('base64').slice(0, -1) // removing the trailing '=' as per the specification
       const transferId = body.transferId;
-      saveTransferDuplicateCheck(transferId, hash)
+      await saveTransferDuplicateCheck(transferId, hash)
     }
 
     await Transfer.prepare(body, null, true)

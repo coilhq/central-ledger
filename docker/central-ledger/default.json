@@ -75,7 +75,8 @@
   "TIGERBEETLE" : {
     "ENABLED" : true,
     "ENABLE_BATCHING" : false,
-    "BATCH-MAX-SIZE" : 100000,
+    "DISABLE_SQL" : false,
+    "BATCH_MAX_SIZE" : 2048,
     "CLUSTER" : 1,
     "REPLICA_ENDPOINT_01" : "5001",
     "REPLICA_ENDPOINT_02" : "5002",

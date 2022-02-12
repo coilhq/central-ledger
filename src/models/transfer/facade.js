@@ -545,7 +545,9 @@ const saveTransferPrepared = async (payload, stateReason = null, hasPassedValida
           throw errTB
         }
 
-        dbInsertTransfer(false, true)
+        if (!Config.TIGERBEETLE.disableSQL) {
+          dbInsertTransfer(false, true)
+        }
       } else {
         await dbInsertTransfer(true, false)
       }
